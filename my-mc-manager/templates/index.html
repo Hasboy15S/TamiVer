@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MC Manager — Minecraft Server Dashboard</title>
+  <meta name="description" content="One-click Minecraft server management dashboard. Start, stop, monitor, and control your server from any browser." />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+          colors: {
+            brand: {
+              50:  '#f0fdf4',
+              100: '#dcfce7',
+              400: '#4ade80',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              900: '#14532d',
+            },
+            surface: {
+              900: '#0a0e17',
+              800: '#0f1623',
+              700: '#151e2e',
+              600: '#1c2840',
+              500: '#243356',
+            }
+          },
+          animation: {
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4,0,0.6,1) infinite',
+            'fade-in': 'fadeIn 0.4s ease-out',
+            'slide-up': 'slideUp 0.3s ease-out',
+          },
+          keyframes: {
+            fadeIn: { '0%': { opacity: '0', transform: 'translateY(8px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+            slideUp: { '0%': { opacity: '0', transform: 'translateY(16px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * { box-sizing: border-box; }
+    body { background: #0a0e17; }
+
+    /* Glassmorphism cards */
+    .glass {
+      background: rgba(15, 22, 35, 0.8);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    /* Animated gradient header */
+    .header-gradient {
+      background: linear-gradient(135deg, #0f3d1a 0%, #0a0e17 40%, #0f1a3d 100%);
+      border-bottom: 1px solid rgba(74, 222, 128, 0.12);
+    }
+
+    /* Status indicator glow */
+    .status-online  { box-shadow: 0 0 0 3px rgba(74,222,128,0.2), 0 0 16px rgba(74,222,128,0.4); background: #22c55e; }
+    .status-offline { box-shadow: 0 0 0 3px rgba(239,68,68,0.2),  0 0 16px rgba(239,68,68,0.4);  background: #ef4444; }
+    .status-pending { box-shadow: 0 0 0 3px rgba(234,179,8,0.2),  0 0 16px rgba(234,179,8,0.4);  background: #eab308; }
+    .status-crashed { box-shadow: 0 0 0 3px rgba(249,115,22,0.2), 0 0 16px rgba(249,115,22,0.4); background: #f97316; }
+
+    /* Console */
+    #console-output {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      line-height: 1.6;
+      color: #a8c0a0;
+      scrollbar-width: thin;
+      scrollbar-color: #243356 transparent;
+    }
+    #console-output::-webkit-scrollbar { width: 5px; }
+    #console-output::-webkit-scrollbar-thumb { background: #243356; border-radius: 4px; }
+
+    .console-line { animation: fadeIn 0.15s ease-out; }
+    .console-line.warn  { color: #fbbf24; }
+    .console-line.error { color: #f87171; }
+    .console-line.info  { color: #60a5fa; }
+    .console-line.done  { color: #4ade80; }
+
+    /* Progress bars */
+    .bar-track { background: rgba(36,51,86,0.6); border-radius: 9999px; overflow: hidden; }
+    .bar-fill  { border-radius: 9999px; transition: width 0.5s ease; }
+    .bar-cpu   { background: linear-gradient(90deg, #3b82f6, #06b6d4); }
+    .bar-ram   { background: linear-gradient(90deg, #8b5cf6, #ec4899); }
+    .bar-java  { background: linear-gradient(90deg, #22c55e, #84cc16); }
+
+    /* Buttons */
+    .btn-primary {
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      box-shadow: 0 4px 15px rgba(22,163,74,0.3);
+      transition: all 0.2s;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      box-shadow: 0 6px 20px rgba(22,163,74,0.5);
+      transform: translateY(-1px);
+    }
+    .btn-danger {
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      box-shadow: 0 4px 15px rgba(220,38,38,0.3);
+      transition: all 0.2s;
+    }
+    .btn-danger:hover:not(:disabled) {
+      box-shadow: 0 6px 20px rgba(220,38,38,0.5);
+      transform: translateY(-1px);
+    }
+    .btn-primary:disabled, .btn-danger:disabled {
+      opacity: 0.35; cursor: not-allowed; transform: none;
+    }
+
+    /* Input fields */
+    .field-input {
+      background: rgba(10, 14, 23, 0.8);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #e2e8f0;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .field-input:focus {
+      outline: none;
+      border-color: rgba(74, 222, 128, 0.4);
+      box-shadow: 0 0 0 3px rgba(74,222,128,0.08);
+    }
+
+    /* Minecraft pixel icon */
+    .mc-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #5b3a29, #3d2818);
+      border: 2px solid #7c5c3f;
+      border-radius: 4px;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+    }
+
+    /* Tooltip */
+    .tooltip { position: relative; }
+    .tooltip::after {
+      content: attr(data-tip);
+      position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%);
+      background: #1c2840; color: #94a3b8; font-size: 0.7rem;
+      padding: 4px 8px; border-radius: 6px; white-space: nowrap;
+      opacity: 0; pointer-events: none; transition: opacity 0.15s;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .tooltip:hover::after { opacity: 1; }
+
+    /* Notification toast */
+    #toast {
+      position: fixed; top: 1.25rem; right: 1.25rem; z-index: 9999;
+      min-width: 280px; padding: 0.75rem 1.25rem;
+      border-radius: 10px; font-size: 0.85rem; font-weight: 500;
+      display: none; animation: slideUp 0.25s ease-out;
+      backdrop-filter: blur(12px);
+    }
+    #toast.success { background: rgba(22,163,74,0.15); border: 1px solid rgba(74,222,128,0.3); color: #4ade80; }
+    #toast.error   { background: rgba(220,38,38,0.15);  border: 1px solid rgba(248,113,113,0.3); color: #f87171; }
+    #toast.info    { background: rgba(59,130,246,0.15); border: 1px solid rgba(96,165,250,0.3);  color: #60a5fa; }
+
+    /* Uptime ticker */
+    #uptime-display { font-variant-numeric: tabular-nums; }
+
+    /* Section reveal */
+    .section-fade { animation: fadeIn 0.4s ease-out; }
+  </style>
+</head>
+
+<body class="min-h-screen text-slate-200 antialiased font-sans">
+
+<!-- ─── TOAST ────────────────────────────────────────────────────────────── -->
+<div id="toast" role="alert"></div>
+
+<!-- ─── HEADER ───────────────────────────────────────────────────────────── -->
+<header class="header-gradient sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+
+    <!-- Brand -->
+    <div class="flex items-center gap-3">
+      <div class="mc-icon">⛏️</div>
+      <div>
+        <h1 class="text-xl font-bold text-white tracking-tight">MC Manager</h1>
+        <p class="text-xs text-slate-400 leading-none mt-0.5">Minecraft Server Dashboard</p>
+      </div>
+    </div>
+
+    <!-- Status pill -->
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 glass px-4 py-2 rounded-full">
+        <div id="status-dot" class="w-2.5 h-2.5 rounded-full status-offline animate-pulse-slow"></div>
+        <span id="status-text" class="text-sm font-semibold text-slate-300">Offline</span>
+      </div>
+      <div id="uptime-display" class="hidden glass px-3 py-1.5 rounded-full text-xs text-brand-400 font-mono">
+        ⏱ <span id="uptime-value">00:00:00</span>
+      </div>
+    </div>
+
+    <!-- API Key entry -->
+    <div class="flex items-center gap-2">
+      <input
+        id="api-key-input"
+        type="password"
+        placeholder="Enter API Key…"
+        class="field-input text-sm rounded-lg px-3 py-1.5 w-44"
+        autocomplete="off"
+      />
+      <button id="save-key-btn"
+        class="text-xs px-3 py-1.5 rounded-lg font-semibold"
+        style="background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);color:#4ade80;transition:background 0.2s"
+        onmouseover="this.style.background='rgba(74,222,128,0.2)'"
+        onmouseout="this.style.background='rgba(74,222,128,0.1)'"
+      >Save</button>
+    </div>
+  </div>
+</header>
+
+<!-- ─── MAIN CONTENT ──────────────────────────────────────────────────────── -->
+<main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 section-fade">
+
+  <!-- ── ROW 1: Controls + Metrics ── -->
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Server Controls -->
+    <div class="glass rounded-2xl p-6 flex flex-col gap-5">
+      <div class="flex items-center gap-2">
+        <span class="text-lg">🎮</span>
+        <h2 class="text-base font-semibold text-white">Server Controls</h2>
+      </div>
+
+      <div class="flex gap-3">
+        <button id="btn-start"
+          class="btn-primary flex-1 py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2">
+          <span>▶</span> Start
+        </button>
+        <button id="btn-stop"
+          class="btn-danger flex-1 py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2" disabled>
+          <span>⏹</span> Stop
+        </button>
+      </div>
+
+      <!-- Quick info -->
+      <div class="space-y-2 text-sm">
+        <div class="flex justify-between">
+          <span class="text-slate-400">PID</span>
+          <span id="info-pid" class="font-mono text-slate-300">—</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Status</span>
+          <span id="info-status" class="font-semibold text-slate-300">Offline</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Uptime</span>
+          <span id="info-uptime" class="font-mono text-slate-300">—</span>
+        </div>
+      </div>
+
+      <!-- Connection badge -->
+      <div class="mt-auto pt-3 border-t border-white/5 flex items-center justify-between text-xs text-slate-500">
+        <span>WS Console</span>
+        <span id="ws-console-badge" class="px-2 py-0.5 rounded-full" style="background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.2)">Disconnected</span>
+      </div>
+    </div>
+
+    <!-- Host Metrics -->
+    <div class="glass rounded-2xl p-6 flex flex-col gap-4">
+      <div class="flex items-center gap-2">
+        <span class="text-lg">🖥️</span>
+        <h2 class="text-base font-semibold text-white">Host System</h2>
+      </div>
+
+      <div class="space-y-4">
+        <!-- CPU -->
+        <div>
+          <div class="flex justify-between text-xs mb-1.5">
+            <span class="text-slate-400">CPU Usage</span>
+            <span id="host-cpu-val" class="text-slate-200 font-mono font-semibold">0%</span>
+          </div>
+          <div class="bar-track h-2">
+            <div id="host-cpu-bar" class="bar-fill bar-cpu h-full" style="width:0%"></div>
+          </div>
+        </div>
+        <!-- RAM -->
+        <div>
+          <div class="flex justify-between text-xs mb-1.5">
+            <span class="text-slate-400">RAM Usage</span>
+            <span id="host-ram-val" class="text-slate-200 font-mono font-semibold">0 MB / 0 MB</span>
+          </div>
+          <div class="bar-track h-2">
+            <div id="host-ram-bar" class="bar-fill bar-ram h-full" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-500 mt-auto pt-2 border-t border-white/5">
+        Updates every 2s via WebSocket
+      </div>
+    </div>
+
+    <!-- Java Process Metrics -->
+    <div class="glass rounded-2xl p-6 flex flex-col gap-4">
+      <div class="flex items-center gap-2">
+        <span class="text-lg">☕</span>
+        <h2 class="text-base font-semibold text-white">Java Process</h2>
+      </div>
+
+      <div id="java-metrics-offline" class="flex flex-col items-center justify-center flex-1 gap-2 text-slate-500 py-6">
+        <span class="text-3xl">💤</span>
+        <span class="text-sm">Server offline</span>
+      </div>
+
+      <div id="java-metrics-live" class="hidden space-y-4">
+        <!-- Java CPU -->
+        <div>
+          <div class="flex justify-between text-xs mb-1.5">
+            <span class="text-slate-400">Java CPU</span>
+            <span id="java-cpu-val" class="text-slate-200 font-mono font-semibold">0%</span>
+          </div>
+          <div class="bar-track h-2">
+            <div id="java-cpu-bar" class="bar-fill bar-java h-full" style="width:0%"></div>
+          </div>
+        </div>
+        <!-- Java RAM -->
+        <div>
+          <div class="flex justify-between text-xs mb-1.5">
+            <span class="text-slate-400">Java RAM (RSS)</span>
+            <span id="java-ram-val" class="text-slate-200 font-mono font-semibold">0 MB</span>
+          </div>
+          <div class="bar-track h-2">
+            <div id="java-ram-bar" class="bar-fill bar-java h-full" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="flex justify-between text-xs">
+          <span class="text-slate-400">PID</span>
+          <span id="java-pid-val" class="font-mono text-brand-400">—</span>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-500 mt-auto pt-2 border-t border-white/5">
+        RSS = Resident Set Size
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ROW 2: Properties + Console ── -->
+  <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+
+    <!-- Server Properties -->
+    <div class="xl:col-span-2 glass rounded-2xl p-6 flex flex-col gap-5">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">⚙️</span>
+          <h2 class="text-base font-semibold text-white">Server Properties</h2>
+        </div>
+        <button id="reload-props-btn"
+          class="tooltip text-xs px-2.5 py-1 rounded-lg text-slate-400"
+          data-tip="Reload from file"
+          style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08)">
+          ↻ Reload
+        </button>
+      </div>
+
+      <div class="space-y-3 flex-1">
+        <!-- Port -->
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Server Port</label>
+          <input id="prop-port" type="number" value="25565" class="field-input w-full rounded-lg px-3 py-2 text-sm" />
+        </div>
+        <!-- MOTD -->
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">MOTD (Server Description)</label>
+          <input id="prop-motd" type="text" class="field-input w-full rounded-lg px-3 py-2 text-sm" />
+        </div>
+        <!-- Max Players -->
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Max Players</label>
+          <input id="prop-max-players" type="number" value="20" class="field-input w-full rounded-lg px-3 py-2 text-sm" />
+        </div>
+        <!-- Gamemode -->
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Default Gamemode</label>
+          <select id="prop-gamemode" class="field-input w-full rounded-lg px-3 py-2 text-sm">
+            <option value="survival">Survival</option>
+            <option value="creative">Creative</option>
+            <option value="adventure">Adventure</option>
+            <option value="spectator">Spectator</option>
+          </select>
+        </div>
+        <!-- Difficulty -->
+        <div>
+          <label class="text-xs text-slate-400 mb-1 block">Difficulty</label>
+          <select id="prop-difficulty" class="field-input w-full rounded-lg px-3 py-2 text-sm">
+            <option value="peaceful">Peaceful</option>
+            <option value="easy">Easy</option>
+            <option value="normal" selected>Normal</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+        <!-- Whitelist toggle -->
+        <div class="flex items-center justify-between">
+          <label class="text-xs text-slate-400">Whitelist Enabled</label>
+          <div class="relative">
+            <input type="checkbox" id="prop-whitelist" class="sr-only peer" />
+            <label for="prop-whitelist"
+              class="block w-10 h-6 rounded-full cursor-pointer transition-colors"
+              style="background:#1c2840;border:1px solid rgba(255,255,255,0.1)"
+              id="whitelist-label">
+              <span
+                class="absolute left-1 top-1 w-4 h-4 rounded-full transition-transform bg-slate-500"
+                id="whitelist-knob"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div id="props-warning" class="hidden text-xs text-amber-400 bg-amber-900/20 border border-amber-400/20 rounded-lg px-3 py-2">
+        ⚠️ Server is running — changes will apply on next restart.
+      </div>
+
+      <button id="save-props-btn"
+        class="btn-primary w-full py-2.5 rounded-xl text-sm font-bold text-white">
+        💾 Save Properties
+      </button>
+    </div>
+
+    <!-- Console -->
+    <div class="xl:col-span-3 glass rounded-2xl p-6 flex flex-col gap-4" style="min-height: 520px;">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">💻</span>
+          <h2 class="text-base font-semibold text-white">Live Console</h2>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="clear-console-btn"
+            class="text-xs px-2.5 py-1 rounded-lg text-slate-400 tooltip"
+            data-tip="Clear console"
+            style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08)">
+            ✕ Clear
+          </button>
+          <div class="flex items-center gap-1.5 text-xs text-slate-500">
+            <label for="autoscroll-toggle" class="cursor-pointer">Auto-scroll</label>
+            <input type="checkbox" id="autoscroll-toggle" checked class="accent-green-500" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Console output -->
+      <div id="console-output"
+        class="flex-1 rounded-xl p-4 overflow-y-auto"
+        style="background:#050810;min-height:340px;max-height:420px;border:1px solid rgba(255,255,255,0.04)">
+        <div class="console-line text-slate-500 italic">Waiting for server output…</div>
+      </div>
+
+      <!-- Command input -->
+      <div class="flex gap-2">
+        <span class="flex items-center text-brand-400 font-mono text-sm px-2">›_</span>
+        <input
+          id="cmd-input"
+          type="text"
+          placeholder="Type a command and press Enter…"
+          maxlength="256"
+          class="field-input flex-1 rounded-xl px-4 py-2.5 text-sm font-mono"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <button id="cmd-send"
+          class="btn-primary px-4 py-2.5 rounded-xl text-sm font-bold text-white"
+          style="min-width: 72px">
+          Send
+        </button>
+      </div>
+      <p class="text-xs text-slate-600 -mt-2">
+        ⚠️ Console commands run with full server authority. Keep your API key private.
+      </p>
+    </div>
+  </div>
+
+</main>
+
+<!-- ─── FOOTER ────────────────────────────────────────────────────────────── -->
+<footer class="text-center text-xs text-slate-600 py-6 border-t border-white/5 mt-4">
+  MC Manager v2.0 &mdash; <a href="https://papermc.io" target="_blank" class="hover:text-brand-400 transition-colors">Powered by PaperMC</a>
+</footer>
+
+
+<!-- ─── JAVASCRIPT ────────────────────────────────────────────────────────── -->
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// Constants & State
+// ═══════════════════════════════════════════════════════════════════
+const BASE_URL = window.location.origin;
+const WS_BASE  = BASE_URL.replace(/^http/, 'ws');
+
+let apiKey = localStorage.getItem('mc_manager_api_key') || '';
+let consoleWs   = null;
+let metricsWs   = null;
+let statusInterval = null;
+let uptimeInterval = null;
+let uptimeStart    = null;
+let currentStatus  = 'Offline';
+let autoScroll     = true;
+let javaMaxRam     = 0; // for bar scaling
+
+// ═══════════════════════════════════════════════════════════════════
+// Init
+// ═══════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  // Restore API key
+  if (apiKey) document.getElementById('api-key-input').value = apiKey;
+
+  // Whitelist toggle visual
+  const wl = document.getElementById('prop-whitelist');
+  const knob = document.getElementById('whitelist-knob');
+  wl.addEventListener('change', () => {
+    knob.style.transform = wl.checked ? 'translateX(16px)' : 'translateX(0)';
+    knob.style.background = wl.checked ? '#22c55e' : '#64748b';
+  });
+
+  // API key save
+  document.getElementById('save-key-btn').addEventListener('click', saveApiKey);
+  document.getElementById('api-key-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveApiKey();
+  });
+
+  // Control buttons
+  document.getElementById('btn-start').addEventListener('click', startServer);
+  document.getElementById('btn-stop').addEventListener('click', stopServer);
+
+  // Console
+  document.getElementById('cmd-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') sendCommand();
+  });
+  document.getElementById('cmd-send').addEventListener('click', sendCommand);
+  document.getElementById('clear-console-btn').addEventListener('click', clearConsole);
+  document.getElementById('autoscroll-toggle').addEventListener('change', e => {
+    autoScroll = e.target.checked;
+  });
+
+  // Properties
+  document.getElementById('save-props-btn').addEventListener('click', saveProperties);
+  document.getElementById('reload-props-btn').addEventListener('click', loadProperties);
+
+  // Kick everything off
+  startPolling();
+  connectMetricsWs();
+  loadProperties();
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// API Key
+// ═══════════════════════════════════════════════════════════════════
+function saveApiKey() {
+  const val = document.getElementById('api-key-input').value.trim();
+  if (!val) { showToast('API key cannot be empty.', 'error'); return; }
+  apiKey = val;
+  localStorage.setItem('mc_manager_api_key', apiKey);
+  showToast('API key saved.', 'success');
+  // Reconnect websockets with new key
+  connectMetricsWs();
+  if (consoleWs) connectConsoleWs();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Fetch helper
+// ═══════════════════════════════════════════════════════════════════
+async function apiFetch(path, options = {}) {
+  const headers = { 'X-API-Key': apiKey, 'Content-Type': 'application/json', ...(options.headers || {}) };
+  const resp = await fetch(BASE_URL + path, { ...options, headers });
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({ detail: resp.statusText }));
+    throw new Error(err.detail || `HTTP ${resp.status}`);
+  }
+  return resp.json();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Status polling
+// ═══════════════════════════════════════════════════════════════════
+function startPolling() {
+  fetchStatus();
+  statusInterval = setInterval(fetchStatus, 4000);
+}
+
+async function fetchStatus() {
+  if (!apiKey) return;
+  try {
+    const data = await apiFetch('/api/server/status');
+    updateStatusUI(data);
+  } catch (e) {
+    console.warn('Status poll failed:', e.message);
+  }
+}
+
+function updateStatusUI(data) {
+  const st = data.status;
+  currentStatus = st;
+
+  // Dot
+  const dot  = document.getElementById('status-dot');
+  const text = document.getElementById('status-text');
+  const uptimeBox = document.getElementById('uptime-display');
+
+  dot.className = 'w-2.5 h-2.5 rounded-full animate-pulse-slow ';
+  if (st === 'Running')                { dot.className += 'status-online';  text.style.color = '#4ade80'; }
+  else if (st === 'Starting' || st === 'Stopping') { dot.className += 'status-pending'; text.style.color = '#eab308'; }
+  else if (st === 'Crashed')           { dot.className += 'status-crashed'; text.style.color = '#f97316'; }
+  else                                 { dot.className += 'status-offline'; text.style.color = '#f87171'; }
+  text.textContent = st;
+  document.getElementById('info-status').textContent = st;
+  document.getElementById('info-pid').textContent = data.pid ?? '—';
+
+  // Uptime
+  if (st === 'Running' && data.uptime_seconds != null) {
+    uptimeBox.classList.remove('hidden');
+    uptimeStart = Date.now() - data.uptime_seconds * 1000;
+    if (!uptimeInterval) {
+      uptimeInterval = setInterval(tickUptime, 1000);
+    }
+    tickUptime();
+  } else {
+    uptimeBox.classList.add('hidden');
+    clearInterval(uptimeInterval); uptimeInterval = null; uptimeStart = null;
+    document.getElementById('info-uptime').textContent = '—';
+  }
+
+  // Buttons
+  const canStart = (st === 'Offline' || st === 'Crashed');
+  const canStop  = (st === 'Running' || st === 'Starting');
+  document.getElementById('btn-start').disabled = !canStart;
+  document.getElementById('btn-stop').disabled  = !canStop;
+
+  // Properties warning
+  const warn = document.getElementById('props-warning');
+  if (st === 'Running') warn.classList.remove('hidden'); else warn.classList.add('hidden');
+
+  // Connect console WS when running
+  if (st === 'Running' && (!consoleWs || consoleWs.readyState > 1)) {
+    connectConsoleWs();
+  }
+}
+
+function tickUptime() {
+  if (!uptimeStart) return;
+  const secs = Math.floor((Date.now() - uptimeStart) / 1000);
+  const h = String(Math.floor(secs / 3600)).padStart(2, '0');
+  const m = String(Math.floor((secs % 3600) / 60)).padStart(2, '0');
+  const s = String(secs % 60).padStart(2, '0');
+  const fmt = `${h}:${m}:${s}`;
+  document.getElementById('uptime-value').textContent = fmt;
+  document.getElementById('info-uptime').textContent  = fmt;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Server Controls
+// ═══════════════════════════════════════════════════════════════════
+async function startServer() {
+  if (!apiKey) { showToast('Set an API key first.', 'error'); return; }
+  document.getElementById('btn-start').disabled = true;
+  try {
+    await apiFetch('/api/server/start', { method: 'POST' });
+    showToast('Server start initiated!', 'success');
+    addConsoleLine('[MC Manager] Start command sent…', 'info');
+    setTimeout(fetchStatus, 1500);
+  } catch (e) {
+    showToast(e.message, 'error');
+    document.getElementById('btn-start').disabled = false;
+  }
+}
+
+async function stopServer() {
+  if (!apiKey) { showToast('Set an API key first.', 'error'); return; }
+  document.getElementById('btn-stop').disabled = true;
+  try {
+    await apiFetch('/api/server/stop', { method: 'POST' });
+    showToast('Stop command sent.', 'info');
+    addConsoleLine('[MC Manager] Stop command sent…', 'warn');
+    setTimeout(fetchStatus, 1500);
+  } catch (e) {
+    showToast(e.message, 'error');
+    document.getElementById('btn-stop').disabled = false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Console WebSocket
+// ═══════════════════════════════════════════════════════════════════
+function connectConsoleWs() {
+  if (!apiKey) return;
+  if (consoleWs && consoleWs.readyState <= 1) consoleWs.close();
+
+  const url = `${WS_BASE}/ws/console?api_key=${encodeURIComponent(apiKey)}`;
+  consoleWs = new WebSocket(url);
+
+  consoleWs.onopen = () => {
+    updateWsBadge(true);
+  };
+
+  consoleWs.onmessage = (e) => {
+    const line = e.data;
+    const cls = classifyLine(line);
+    addConsoleLine(line, cls);
+    // Detect "Done" to flip status to Running
+    if (line.includes('Done') && line.includes('For help')) {
+      currentStatus = 'Running';
+      fetchStatus();
+    }
+  };
+
+  consoleWs.onerror  = () => { updateWsBadge(false); };
+  consoleWs.onclose  = () => {
+    updateWsBadge(false);
+    // Reconnect if server is still running
+    setTimeout(() => {
+      if (currentStatus === 'Running') connectConsoleWs();
+    }, 3000);
+  };
+}
+
+function updateWsBadge(connected) {
+  const badge = document.getElementById('ws-console-badge');
+  if (connected) {
+    badge.textContent = 'Connected';
+    badge.style.background = 'rgba(34,197,94,0.1)';
+    badge.style.color = '#4ade80';
+    badge.style.border = '1px solid rgba(74,222,128,0.3)';
+  } else {
+    badge.textContent = 'Disconnected';
+    badge.style.background = 'rgba(239,68,68,0.1)';
+    badge.style.color = '#f87171';
+    badge.style.border = '1px solid rgba(239,68,68,0.2)';
+  }
+}
+
+function classifyLine(line) {
+  const l = line.toLowerCase();
+  if (l.includes('error') || l.includes('exception') || l.includes('crash')) return 'error';
+  if (l.includes('warn')) return 'warn';
+  if (l.includes('done') || l.includes('started') || l.includes('running')) return 'done';
+  if (l.includes('[mc manager]') || l.includes('info')) return 'info';
+  return '';
+}
+
+function addConsoleLine(text, cls = '') {
+  const output = document.getElementById('console-output');
+  const div = document.createElement('div');
+  div.className = `console-line ${cls}`;
+  div.textContent = text;
+  output.appendChild(div);
+
+  // Trim to 500 lines
+  while (output.children.length > 500) output.removeChild(output.firstChild);
+
+  if (autoScroll) output.scrollTop = output.scrollHeight;
+}
+
+function clearConsole() {
+  const output = document.getElementById('console-output');
+  output.innerHTML = '<div class="console-line text-slate-500 italic">Console cleared.</div>';
+}
+
+async function sendCommand() {
+  const input = document.getElementById('cmd-input');
+  const cmd = input.value.trim();
+  if (!cmd) return;
+  if (!consoleWs || consoleWs.readyState !== WebSocket.OPEN) {
+    showToast('Console not connected. Is the server running?', 'error');
+    return;
+  }
+  consoleWs.send(cmd);
+  addConsoleLine(`> ${cmd}`, 'done');
+  input.value = '';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Metrics WebSocket
+// ═══════════════════════════════════════════════════════════════════
+function connectMetricsWs() {
+  if (!apiKey) return;
+  if (metricsWs && metricsWs.readyState <= 1) metricsWs.close();
+
+  const url = `${WS_BASE}/ws/metrics?api_key=${encodeURIComponent(apiKey)}`;
+  metricsWs = new WebSocket(url);
+
+  metricsWs.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      updateMetricsUI(data);
+    } catch (_) {}
+  };
+
+  metricsWs.onclose = () => {
+    setTimeout(connectMetricsWs, 4000);
+  };
+}
+
+function updateMetricsUI(data) {
+  const h = data.host;
+  if (!h) return;
+
+  // Host CPU
+  setBar('host-cpu-bar', 'host-cpu-val', h.cpu_percent, 100, `${h.cpu_percent}%`);
+  // Host RAM
+  setBar('host-ram-bar', 'host-ram-val', h.ram_percent, 100,
+    `${Math.round(h.ram_used_mb)} MB / ${Math.round(h.ram_total_mb)} MB`);
+
+  // Java process
+  const jp = data.java_process;
+  const offlineEl = document.getElementById('java-metrics-offline');
+  const liveEl    = document.getElementById('java-metrics-live');
+
+  if (jp) {
+    offlineEl.classList.add('hidden');
+    liveEl.classList.remove('hidden');
+
+    if (!javaMaxRam && h.ram_total_mb) javaMaxRam = h.ram_total_mb;
+    const cpuCap = Math.min(jp.cpu_percent, 100);
+    setBar('java-cpu-bar', 'java-cpu-val', cpuCap, 100, `${jp.cpu_percent}%`);
+    const ramPct = javaMaxRam ? (jp.rss_mb / javaMaxRam * 100) : 0;
+    setBar('java-ram-bar', 'java-ram-val', ramPct, 100, `${Math.round(jp.rss_mb)} MB`);
+    document.getElementById('java-pid-val').textContent = jp.pid;
+  } else {
+    offlineEl.classList.remove('hidden');
+    liveEl.classList.add('hidden');
+  }
+}
+
+function setBar(barId, valId, value, max, label) {
+  const pct = Math.min(Math.max((value / max) * 100, 0), 100);
+  document.getElementById(barId).style.width = `${pct}%`;
+  document.getElementById(valId).textContent = label;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Server Properties
+// ═══════════════════════════════════════════════════════════════════
+async function loadProperties() {
+  if (!apiKey) return;
+  try {
+    const props = await apiFetch('/api/server/properties');
+    document.getElementById('prop-port').value        = props['server-port'] ?? '25565';
+    document.getElementById('prop-motd').value        = props['motd'] ?? '';
+    document.getElementById('prop-max-players').value = props['max-players'] ?? '20';
+
+    const gm = document.getElementById('prop-gamemode');
+    if (props['gamemode']) gm.value = props['gamemode'];
+
+    const diff = document.getElementById('prop-difficulty');
+    if (props['difficulty']) diff.value = props['difficulty'];
+
+    const wl = document.getElementById('prop-whitelist');
+    const knob = document.getElementById('whitelist-knob');
+    const checked = props['white-list'] === 'true';
+    wl.checked = checked;
+    knob.style.transform = checked ? 'translateX(16px)' : 'translateX(0)';
+    knob.style.background = checked ? '#22c55e' : '#64748b';
+  } catch (e) {
+    console.warn('Failed to load properties:', e.message);
+  }
+}
+
+async function saveProperties() {
+  if (!apiKey) { showToast('Set an API key first.', 'error'); return; }
+  const updates = {
+    'server-port':  document.getElementById('prop-port').value,
+    'motd':         document.getElementById('prop-motd').value,
+    'max-players':  document.getElementById('prop-max-players').value,
+    'gamemode':     document.getElementById('prop-gamemode').value,
+    'difficulty':   document.getElementById('prop-difficulty').value,
+    'white-list':   document.getElementById('prop-whitelist').checked ? 'true' : 'false',
+  };
+  try {
+    const resp = await apiFetch('/api/server/properties', {
+      method: 'POST',
+      body: JSON.stringify(updates),
+    });
+    showToast(resp.message, resp.requires_restart ? 'info' : 'success');
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Toast notifications
+// ═══════════════════════════════════════════════════════════════════
+let toastTimer = null;
+function showToast(msg, type = 'info') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = type;
+  el.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.style.display = 'none'; }, 3500);
+}
+</script>
+</body>
+</html>
