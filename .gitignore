@@ -13,7 +13,6 @@ __pycache__/
 *.py[cod]
 
 # Minecraft Server Data & Large Binaries
-my-mc-manager/data/
 data/
 *.jar
 *.tmp
