@@ -202,6 +202,56 @@
 
     /* Section reveal */
     .section-fade { animation: fadeIn 0.4s ease-out; }
+
+    /* Network card */
+    .net-address {
+      font-family: 'JetBrains Mono', monospace;
+      background: rgba(10, 14, 23, 0.8);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+      color: #e2e8f0;
+      letter-spacing: 0.5px;
+      user-select: all;
+    }
+    .copy-btn {
+      background: rgba(74,222,128,0.1);
+      border: 1px solid rgba(74,222,128,0.2);
+      color: #4ade80;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .copy-btn:hover {
+      background: rgba(74,222,128,0.2);
+      border-color: rgba(74,222,128,0.4);
+    }
+    .mode-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 600;
+    }
+    .mode-cracked {
+      background: rgba(74,222,128,0.1); color: #4ade80;
+      border: 1px solid rgba(74,222,128,0.2);
+    }
+    .mode-premium {
+      background: rgba(234,179,8,0.1); color: #eab308;
+      border: 1px solid rgba(234,179,8,0.2);
+    }
+    .playit-btn {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      box-shadow: 0 4px 15px rgba(245,158,11,0.3);
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+    .playit-btn:hover {
+      box-shadow: 0 6px 20px rgba(245,158,11,0.5);
+      transform: translateY(-1px);
+    }
   </style>
 </head>
 
@@ -472,6 +522,24 @@
             </label>
           </div>
         </div>
+        <!-- Online Mode toggle -->
+        <div class="flex items-center justify-between">
+          <div>
+            <label class="text-xs text-slate-400">Online Mode</label>
+            <p class="text-[10px] text-slate-600 mt-0.5">OFF = TLauncher/Cracked dapat join</p>
+          </div>
+          <div class="relative">
+            <input type="checkbox" id="prop-online-mode" class="sr-only peer" />
+            <label for="prop-online-mode"
+              class="block w-10 h-6 rounded-full cursor-pointer transition-colors"
+              style="background:#1c2840;border:1px solid rgba(255,255,255,0.1)"
+              id="onlinemode-label">
+              <span
+                class="absolute left-1 top-1 w-4 h-4 rounded-full transition-transform bg-slate-500"
+                id="onlinemode-knob"></span>
+            </label>
+          </div>
+        </div>
       </div>
 
       <div id="props-warning" class="hidden text-xs text-amber-400 bg-amber-900/20 border border-amber-400/20 rounded-lg px-3 py-2">
@@ -536,6 +604,70 @@
     </div>
   </div>
 
+  <!-- ── ROW 3: Multiplayer / Network ── -->
+  <div class="glass rounded-2xl p-6 flex flex-col gap-5 section-fade">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="text-lg">🌐</span>
+        <h2 class="text-base font-semibold text-white">Multiplayer / Network</h2>
+      </div>
+      <span id="net-mode-badge" class="mode-badge mode-cracked">🔓 Cracked OK</span>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+      <!-- LAN Play -->
+      <div class="space-y-3">
+        <h3 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+          <span>🏠</span> LAN Play (WiFi yang sama)
+        </h3>
+        <p class="text-xs text-slate-500">Teman satu WiFi bisa langsung connect pakai alamat ini di Minecraft:</p>
+        <div class="flex items-center gap-2">
+          <div id="net-lan-address" class="net-address flex-1">Loading…</div>
+          <button id="copy-lan-btn" class="copy-btn" onclick="copyToClipboard('net-lan-address')">📋 Copy</button>
+        </div>
+        <div class="text-xs space-y-1">
+          <div class="flex justify-between text-slate-400">
+            <span>IP Address</span>
+            <span id="net-lan-ip" class="font-mono text-slate-300">—</span>
+          </div>
+          <div class="flex justify-between text-slate-400">
+            <span>Port</span>
+            <span id="net-port" class="font-mono text-slate-300">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Internet Play -->
+      <div class="space-y-3">
+        <h3 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
+          <span>🌍</span> Internet Play (Teman luar kota)
+        </h3>
+        <p class="text-xs text-slate-500">
+          Supaya teman dari luar kota bisa join, kamu perlu <strong>tunnel</strong> gratis.
+          Pakai <strong>playit.gg</strong> — paling gampang dan gratis!
+        </p>
+        <a href="https://playit.gg" target="_blank" rel="noopener"
+          class="playit-btn inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white">
+          🚀 Buka playit.gg (Gratis)
+        </a>
+        <div class="text-[11px] text-slate-500 space-y-1 mt-1" style="background:rgba(10,14,23,0.5);border:1px solid rgba(255,255,255,0.04);border-radius:8px;padding:10px">
+          <p class="font-semibold text-slate-400 mb-1">Cara pakai:</p>
+          <p>1️⃣ Buka <a href="https://playit.gg" target="_blank" class="text-amber-400 hover:underline">playit.gg</a> → Download agent</p>
+          <p>2️⃣ Jalankan agent playit di laptop kamu</p>
+          <p>3️⃣ Login, buat tunnel untuk port <strong class="text-slate-300">25565</strong> (Minecraft Java)</p>
+          <p>4️⃣ Dapat alamat publik (misal: <code class="text-slate-300">abc123.playit.gg</code>)</p>
+          <p>5️⃣ Kasih alamat itu ke teman → mereka masukkan di Multiplayer → Add Server</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="text-xs text-slate-600 pt-2 border-t border-white/5">
+      🛡️ Tips: Kalau pakai TLauncher, pastikan <strong>online-mode = OFF</strong> di Server Properties di atas.
+    </div>
+  </div>
+
 </main>
 
 <!-- ─── FOOTER ────────────────────────────────────────────────────────────── -->
@@ -577,6 +709,14 @@ document.addEventListener('DOMContentLoaded', () => {
     knob.style.background = wl.checked ? '#22c55e' : '#64748b';
   });
 
+  // Online-mode toggle visual
+  const om = document.getElementById('prop-online-mode');
+  const omKnob = document.getElementById('onlinemode-knob');
+  om.addEventListener('change', () => {
+    omKnob.style.transform = om.checked ? 'translateX(16px)' : 'translateX(0)';
+    omKnob.style.background = om.checked ? '#eab308' : '#64748b';
+  });
+
   // API key save
   document.getElementById('save-key-btn').addEventListener('click', saveApiKey);
   document.getElementById('api-key-input').addEventListener('keydown', e => {
@@ -612,6 +752,7 @@ document.addEventListener('DOMContentLoaded', () => {
   connectMetricsWs();
   loadProperties();
   loadVersions();
+  loadNetworkInfo();
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -921,6 +1062,14 @@ async function loadProperties() {
     wl.checked = checked;
     knob.style.transform = checked ? 'translateX(16px)' : 'translateX(0)';
     knob.style.background = checked ? '#22c55e' : '#64748b';
+
+    // Online Mode
+    const om = document.getElementById('prop-online-mode');
+    const omKnob = document.getElementById('onlinemode-knob');
+    const omChecked = props['online-mode'] === 'true';
+    om.checked = omChecked;
+    omKnob.style.transform = omChecked ? 'translateX(16px)' : 'translateX(0)';
+    omKnob.style.background = omChecked ? '#eab308' : '#64748b';
   } catch (e) {
     console.warn('Failed to load properties:', e.message);
   }
@@ -935,6 +1084,7 @@ async function saveProperties() {
     'gamemode':     document.getElementById('prop-gamemode').value,
     'difficulty':   document.getElementById('prop-difficulty').value,
     'white-list':   document.getElementById('prop-whitelist').checked ? 'true' : 'false',
+    'online-mode':  document.getElementById('prop-online-mode').checked ? 'true' : 'false',
   };
   try {
     const resp = await apiFetch('/api/server/properties', {
@@ -942,9 +1092,52 @@ async function saveProperties() {
       body: JSON.stringify(updates),
     });
     showToast(resp.message, resp.requires_restart ? 'info' : 'success');
+    // Refresh network info after property change
+    loadNetworkInfo();
   } catch (e) {
     showToast(e.message, 'error');
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Network Info
+// ═══════════════════════════════════════════════════════════════════
+async function loadNetworkInfo() {
+  if (!apiKey) return;
+  try {
+    const data = await apiFetch('/api/server/network');
+    document.getElementById('net-lan-address').textContent = data.lan_address || '—';
+    document.getElementById('net-lan-ip').textContent = data.lan_ip || '—';
+    document.getElementById('net-port').textContent = data.port || '—';
+
+    // Update mode badge
+    const badge = document.getElementById('net-mode-badge');
+    if (data.cracked_compatible) {
+      badge.textContent = '🔓 Cracked OK';
+      badge.className = 'mode-badge mode-cracked';
+    } else {
+      badge.textContent = '🔒 Premium Only';
+      badge.className = 'mode-badge mode-premium';
+    }
+  } catch (e) {
+    console.warn('Failed to load network info:', e.message);
+  }
+}
+
+function copyToClipboard(elementId) {
+  const text = document.getElementById(elementId).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('📋 Address copied to clipboard!', 'success');
+  }).catch(() => {
+    // Fallback
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    showToast('📋 Address copied!', 'success');
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════

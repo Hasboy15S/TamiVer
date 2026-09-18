@@ -13,6 +13,7 @@ GET  /api/server/properties     — Read server.properties
 POST /api/server/properties     — Update server.properties
 GET  /api/server/versions       — List available MC versions
 POST /api/server/version        — Change MC version & download jar
+GET  /api/server/network        — LAN IP, port, online-mode info
 WS   /ws/console                — Real-time console I/O
 WS   /ws/metrics                — Live system metrics (2s interval)
 
@@ -26,6 +27,7 @@ import dataclasses
 import json
 import logging
 import os
+import socket
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -226,6 +228,43 @@ async def api_set_version(request: Request):
     except Exception as exc:
         logger.exception("Failed to change version: %s", exc)
         raise HTTPException(status_code=500, detail=f"Version change failed: {exc}")
+
+
+# ---------------------------------------------------------------------------
+# Network info route
+# ---------------------------------------------------------------------------
+
+def _get_lan_ip() -> str:
+    """Best-effort detection of the machine's LAN IP address."""
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0.5)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "127.0.0.1"
+
+
+@app.get("/api/server/network", dependencies=[Depends(require_api_key)])
+async def api_network_info():
+    """
+    Return network information for multiplayer setup:
+    LAN IP, server port, and online-mode status.
+    """
+    props = server_manager.read_properties()
+    port = props.get("server-port", "25565")
+    online_mode = props.get("online-mode", "true")
+    lan_ip = _get_lan_ip()
+
+    return {
+        "lan_ip": lan_ip,
+        "port": port,
+        "online_mode": online_mode,
+        "lan_address": f"{lan_ip}:{port}",
+        "cracked_compatible": online_mode.lower() == "false",
+    }
 
 
 # ---------------------------------------------------------------------------
