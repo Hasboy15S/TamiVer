@@ -48,10 +48,9 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-# PaperMC migrated from api.papermc.io/v2 (sunset) to fill.papermc.io/v3
-PAPERMC_API_BASE   = "https://fill.papermc.io/v3/projects/paper"
-PAPERMC_USER_AGENT = "NusatopiaManager/1.0 (github.com/Hasboy15S/Nusatopia)"
-FALLBACK_JAR_URL   = "https://fill-data.papermc.io/v1/objects/05209ac5a423bf98136dd775a87d4324955d2c865f887b20edd6b43a59cb36c4/paper-1.21.4-1.jar"
+# Mojang Vanilla API
+MOJANG_MANIFEST_URL = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
+USER_AGENT = "NusatopiaManager/1.0 (github.com/Hasboy15S/Nusatopia)"
 STOP_TIMEOUT = 30          # seconds to wait for graceful stop before force-kill
 CRASH_POLL_INTERVAL = 3    # seconds between crash-detection polls
 MAX_COMMAND_LEN = 256       # maximum bytes accepted from WebSocket command input
@@ -214,76 +213,64 @@ class ServerManager:
             logger.info("server.jar found at %s — skipping download.", jar)
             return
 
-        logger.info("server.jar not found. Fetching PaperMC build...")
+        logger.info("server.jar not found. Fetching Vanilla Mojang build...")
         dest = jar
-        headers = {"User-Agent": PAPERMC_USER_AGENT}
+        headers = {"User-Agent": USER_AGENT}
 
-        # Try dynamic resolution via PaperMC Fill v3 API
-        try:
-            async with httpx.AsyncClient(timeout=20.0, headers=headers) as client:
+        async with httpx.AsyncClient(timeout=30.0, headers=headers) as client:
+            try:
                 mc_version = await self._resolve_mc_version(client)
                 download_url = await self._resolve_download_url(client, mc_version)
                 if download_url:
                     await self._download_jar_from_url(client, download_url, dest)
                     return
-        except Exception as exc:
-            logger.warning("PaperMC API resolution failed (%s). Falling back to direct static download.", exc)
-
-        # Fallback to direct static download if API resolution fails or returns no URL
-        logger.info("Downloading PaperMC 1.21.4 jar via fallback direct URL...")
-        async with httpx.AsyncClient(timeout=60.0, headers=headers, follow_redirects=True) as client:
-            await self._download_jar_from_url(client, FALLBACK_JAR_URL, dest)
+            except Exception as exc:
+                logger.error("Mojang API resolution failed: %s", exc)
+                raise RuntimeError(f"Gagal mendownload server: {exc}") from exc
 
     async def _resolve_mc_version(self, client: httpx.AsyncClient) -> str:
-        """Resolve which MC version to use (pinned or latest from Fill v3 API)."""
+        """Resolve which MC version to use (pinned or latest release from Mojang)."""
         pinned = self._settings.mc_version
         if pinned:
             logger.info("Using pinned Minecraft version: %s", pinned)
             return pinned
 
-        try:
-            resp = await client.get(PAPERMC_API_BASE)
-            resp.raise_for_status()
-            raw = resp.json().get("versions", {})
-            if isinstance(raw, dict):
-                # Check for "1.21" family first
-                if "1.21" in raw and raw["1.21"]:
-                    for v in raw["1.21"]:
-                        if v == "1.21.4":
-                            return "1.21.4"
-                    return raw["1.21"][0]
-                for key, v_list in raw.items():
-                    if isinstance(v_list, list) and v_list:
-                        return v_list[0]
-            elif isinstance(raw, list) and raw:
-                return str(raw[-1])
-        except Exception as e:
-            logger.warning("Failed to parse MC versions from API: %s", e)
-
-        return "1.21.4"
+        resp = await client.get(MOJANG_MANIFEST_URL)
+        resp.raise_for_status()
+        data = resp.json()
+        latest = data.get("latest", {}).get("release")
+        if not latest:
+            raise ValueError("Could not determine latest release version from Mojang manifest.")
+        return latest
 
     async def _resolve_download_url(self, client: httpx.AsyncClient, mc_version: str) -> Optional[str]:
         """
-        Fill v3: GET /v3/projects/paper/versions/{version}/builds
-        Returns list of build objects; builds[0] is the latest build.
+        Fetch Mojang manifest, find the specific version, get its metadata URL,
+        then fetch that metadata to get the server jar download URL.
         """
-        url = f"{PAPERMC_API_BASE}/versions/{mc_version}/builds"
-        resp = await client.get(url)
+        resp = await client.get(MOJANG_MANIFEST_URL)
         resp.raise_for_status()
         data = resp.json()
-        builds = data if isinstance(data, list) else data.get("builds", [])
-        if not builds:
-            return None
-
-        chosen = builds[0]
-        downloads = chosen.get("downloads", {})
-
-        # Look for any download entry with a valid 'url'
-        for dl_key, dl_val in downloads.items():
-            if isinstance(dl_val, dict) and "url" in dl_val:
-                return dl_val["url"]
-
-        return None
+        versions = data.get("versions", [])
+        
+        version_meta_url = None
+        for v in versions:
+            if v.get("id") == mc_version:
+                version_meta_url = v.get("url")
+                break
+                
+        if not version_meta_url:
+            raise ValueError(f"Versi {mc_version} tidak ditemukan di server resmi Mojang.")
+            
+        meta_resp = await client.get(version_meta_url)
+        meta_resp.raise_for_status()
+        meta_data = meta_resp.json()
+        
+        dl_url = meta_data.get("downloads", {}).get("server", {}).get("url")
+        if not dl_url:
+            raise ValueError(f"File server.jar tidak tersedia untuk versi {mc_version} di server Mojang.")
+            
+        return dl_url
 
     async def _download_jar_from_url(
         self,
@@ -291,12 +278,12 @@ class ServerManager:
         download_url: str,
         dest: Path,
     ) -> None:
-        logger.info("Downloading PaperMC jar from: %s", download_url)
+        logger.info("Downloading Vanilla server jar from: %s", download_url)
         dest.parent.mkdir(parents=True, exist_ok=True)
         tmp = dest.with_suffix(".tmp")
 
-        # If a fully downloaded temp file already exists (>50MB), promote it directly
-        if tmp.exists() and tmp.stat().st_size > 50 * 1024 * 1024:
+        # If a fully downloaded temp file already exists (>20MB), promote it directly
+        if tmp.exists() and tmp.stat().st_size > 20 * 1024 * 1024:
             logger.info("Found completed temp download (%d bytes), promoting to server.jar...", tmp.stat().st_size)
             tmp.rename(dest)
             return
@@ -316,14 +303,14 @@ class ServerManager:
                                 logger.debug("Download progress: %.1f%%", downloaded / total * 100)
 
                 tmp.rename(dest)
-                logger.info("PaperMC jar saved to %s (%d bytes)", dest, downloaded)
+                logger.info("Vanilla server jar saved to %s (%d bytes)", dest, downloaded)
                 return
             except Exception as exc:
                 logger.warning("Download attempt %d/%d failed (%s). Retrying...", attempt, max_attempts, exc)
                 if tmp.exists():
                     tmp.unlink(missing_ok=True)
                 if attempt == max_attempts:
-                    raise RuntimeError(f"Failed to download PaperMC jar after {max_attempts} attempts: {exc}") from exc
+                    raise RuntimeError(f"Failed to download server jar after {max_attempts} attempts: {exc}") from exc
                 await asyncio.sleep(2)
 
     def _write_eula(self) -> None:
@@ -398,33 +385,30 @@ class ServerManager:
 
     async def get_available_versions(self) -> dict:
         """
-        Fetch all available Minecraft versions supported by PaperMC.
+        Fetch all available Minecraft release versions supported by Mojang.
         Returns a dict with 'current' (active version) and 'versions' (list of version strings).
         """
-        headers = {"User-Agent": PAPERMC_USER_AGENT}
+        headers = {"User-Agent": USER_AGENT}
         current = self._settings.mc_version or "(latest)"
         versions: list[str] = []
 
         try:
             async with httpx.AsyncClient(timeout=15.0, headers=headers) as client:
-                resp = await client.get(PAPERMC_API_BASE)
+                resp = await client.get(MOJANG_MANIFEST_URL)
                 resp.raise_for_status()
-                raw = resp.json().get("versions", {})
+                data = resp.json()
+                
+                # Fetch all versions, both releases and snapshots (in case user wants 26.3 or custom)
+                for v in data.get("versions", []):
+                    vid = v.get("id")
+                    if vid:
+                        versions.append(vid)
 
-                if isinstance(raw, dict):
-                    # Fill v3 returns versions grouped by family
-                    for family, v_list in raw.items():
-                        if isinstance(v_list, list):
-                            versions.extend(v_list)
-                elif isinstance(raw, list):
-                    versions = [str(v) for v in raw]
-
-            # Sort versions so newest appears first
-            versions = sorted(set(versions), key=self._version_sort_key, reverse=True)
+            # Keep top 200 to avoid massive payloads
+            versions = versions[:200]
         except Exception as exc:
-            logger.warning("Failed to fetch PaperMC versions: %s", exc)
-            # Return a minimal fallback list
-            versions = ["1.21.4", "1.21.3", "1.21.1", "1.20.6", "1.20.4", "1.20.2", "1.20.1"]
+            logger.warning("Failed to fetch Mojang versions: %s", exc)
+            versions = ["1.21.4", "1.21.1", "1.20.6", "1.20.4", "1.19.4"]
 
         return {"current": current, "versions": versions}
 

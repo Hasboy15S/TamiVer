@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 # Minimum Java versions per Minecraft series
 # ---------------------------------------------------------------------------
 _MC_JAVA_REQUIREMENTS: dict[str, int] = {
-    "1.20": 17,
     "1.21": 21,
+    "1.20": 17,
     "1.19": 17,
     "1.18": 17,
     "1.17": 16,
@@ -35,9 +35,22 @@ _MC_JAVA_REQUIREMENTS: dict[str, int] = {
 
 def _min_java_for_mc(mc_version: str) -> int:
     """Return the minimum Java major version required for a given MC release."""
+    # Explicitly support 26.x format (or any non "1.x" format) requiring Java 21
+    if mc_version.startswith("26.") or not mc_version.startswith("1."):
+        return 21
+
     for prefix, java_min in _MC_JAVA_REQUIREMENTS.items():
         if mc_version.startswith(prefix):
+            # Minecraft 1.20.5 and above requires Java 21
+            if prefix == "1.20":
+                try:
+                    parts = mc_version.split(".")
+                    if len(parts) >= 3 and int(parts[2]) >= 5:
+                        return 21
+                except ValueError:
+                    pass
             return java_min
+            
     # Default: assume Java 21 for anything newer
     return 21
 
