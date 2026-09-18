@@ -41,7 +41,7 @@ from typing import Any, Optional
 
 import httpx
 
-from core.config import get_settings
+from core.config import get_settings, save_env_var, reload_settings
 
 logger = logging.getLogger(__name__)
 
@@ -391,6 +391,92 @@ class ServerManager:
 
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         logger.info("server.properties updated with keys: %s", list(updates.keys()))
+
+    # ------------------------------------------------------------------
+    # Version management
+    # ------------------------------------------------------------------
+
+    async def get_available_versions(self) -> dict:
+        """
+        Fetch all available Minecraft versions supported by PaperMC.
+        Returns a dict with 'current' (active version) and 'versions' (list of version strings).
+        """
+        headers = {"User-Agent": PAPERMC_USER_AGENT}
+        current = self._settings.mc_version or "(latest)"
+        versions: list[str] = []
+
+        try:
+            async with httpx.AsyncClient(timeout=15.0, headers=headers) as client:
+                resp = await client.get(PAPERMC_API_BASE)
+                resp.raise_for_status()
+                raw = resp.json().get("versions", {})
+
+                if isinstance(raw, dict):
+                    # Fill v3 returns versions grouped by family
+                    for family, v_list in raw.items():
+                        if isinstance(v_list, list):
+                            versions.extend(v_list)
+                elif isinstance(raw, list):
+                    versions = [str(v) for v in raw]
+
+            # Sort versions so newest appears first
+            versions = sorted(set(versions), key=self._version_sort_key, reverse=True)
+        except Exception as exc:
+            logger.warning("Failed to fetch PaperMC versions: %s", exc)
+            # Return a minimal fallback list
+            versions = ["1.21.4", "1.21.3", "1.21.1", "1.20.6", "1.20.4", "1.20.2", "1.20.1"]
+
+        return {"current": current, "versions": versions}
+
+    @staticmethod
+    def _version_sort_key(version: str) -> tuple:
+        """Turn '1.21.4' into (1, 21, 4) for numeric sorting."""
+        parts = []
+        for p in version.split("."):
+            try:
+                parts.append(int(p))
+            except ValueError:
+                parts.append(0)
+        return tuple(parts)
+
+    async def change_version(self, new_version: str) -> dict:
+        """
+        Switch the Minecraft server to a different version.
+        Server MUST be offline. Steps:
+        1. Validate server is offline.
+        2. Delete existing server.jar.
+        3. Persist MC_VERSION to .env.
+        4. Reload settings.
+        5. Download the new jar.
+        """
+        if self._status not in (ServerStatus.OFFLINE, ServerStatus.CRASHED):
+            raise RuntimeError(
+                f"Server must be offline to change version (current: {self._status.value})."
+            )
+
+        new_version = new_version.strip()
+        if not new_version:
+            raise ValueError("Version string must not be empty.")
+
+        logger.info("Changing Minecraft version to %s ...", new_version)
+
+        # 1. Remove existing server.jar so _ensure_jar will re-download
+        jar = self._settings.server_jar
+        if jar.exists():
+            jar.unlink()
+            logger.info("Removed old server.jar at %s", jar)
+
+        # 2. Persist the new version to .env and reload settings
+        save_env_var("MC_VERSION", new_version)
+        self._settings = reload_settings()
+
+        # 3. Download the new jar
+        await self._ensure_jar()
+
+        return {
+            "message": f"Version changed to {new_version}. Server jar downloaded.",
+            "version": new_version,
+        }
 
     # ------------------------------------------------------------------
     # Process lifecycle

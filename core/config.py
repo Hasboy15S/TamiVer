@@ -144,7 +144,43 @@ class Settings:
             )
 
 
+def save_env_var(key: str, value: str) -> None:
+    """
+    Persist a single environment variable to the .env file.
+
+    If the key already exists in the file, its value is updated in-place.
+    Otherwise, the key=value pair is appended.
+    """
+    env_path = Path(__file__).resolve().parent.parent / ".env"
+    lines: list[str] = []
+    found = False
+
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if stripped.startswith(f"{key}=") or stripped == key:
+                lines.append(f"{key}={value}")
+                found = True
+            else:
+                lines.append(line)
+
+    if not found:
+        lines.append(f"{key}={value}")
+
+    env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    # Also update the current process environment
+    os.environ[key] = value
+    logger.info("Persisted %s=%s to .env", key, value)
+
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     """Return the cached Settings singleton."""
     return Settings()
+
+
+def reload_settings() -> Settings:
+    """Clear the settings cache, reload .env, and return fresh Settings."""
+    load_dotenv(override=True)
+    get_settings.cache_clear()
+    return get_settings()

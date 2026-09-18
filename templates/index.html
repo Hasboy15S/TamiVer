@@ -91,6 +91,33 @@
     .console-line.info  { color: #60a5fa; }
     .console-line.done  { color: #4ade80; }
 
+    /* Version selector */
+    .version-section {
+      background: rgba(10, 14, 23, 0.6);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .version-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 600;
+      background: rgba(74,222,128,0.1); color: #4ade80;
+      border: 1px solid rgba(74,222,128,0.2);
+    }
+    .btn-version {
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      box-shadow: 0 4px 15px rgba(99,102,241,0.3);
+      transition: all 0.2s;
+    }
+    .btn-version:hover:not(:disabled) {
+      background: linear-gradient(135deg, #818cf8, #6366f1);
+      box-shadow: 0 6px 20px rgba(99,102,241,0.5);
+      transform: translateY(-1px);
+    }
+    .btn-version:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 0.8s linear infinite; display: inline-block; }
+
     /* Progress bars */
     .bar-track { background: rgba(36,51,86,0.6); border-radius: 9999px; overflow: hidden; }
     .bar-fill  { border-radius: 9999px; transition: width 0.5s ease; }
@@ -248,6 +275,29 @@
           class="btn-danger flex-1 py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2" disabled>
           <span>⏹</span> Stop
         </button>
+      </div>
+
+      <!-- Minecraft Version Selector -->
+      <div class="version-section space-y-2.5">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="text-sm">🧊</span>
+            <span class="text-xs font-semibold text-slate-300">Minecraft Version</span>
+          </div>
+          <span id="current-version-badge" class="version-badge">—</span>
+        </div>
+        <div class="flex gap-2">
+          <select id="mc-version-select" class="field-input flex-1 rounded-lg px-3 py-2 text-sm">
+            <option value="" disabled selected>Loading versions…</option>
+          </select>
+          <button id="btn-change-version"
+            class="btn-version px-3 py-2 rounded-lg text-xs font-bold text-white flex items-center gap-1.5"
+            disabled>
+            <span id="version-btn-icon">⬇</span>
+            <span id="version-btn-text">Apply</span>
+          </button>
+        </div>
+        <p id="version-download-status" class="text-xs text-slate-500 hidden"></p>
       </div>
 
       <!-- Quick info -->
@@ -551,10 +601,17 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('save-props-btn').addEventListener('click', saveProperties);
   document.getElementById('reload-props-btn').addEventListener('click', loadProperties);
 
+  // Version selector
+  document.getElementById('btn-change-version').addEventListener('click', changeVersion);
+  document.getElementById('mc-version-select').addEventListener('change', () => {
+    document.getElementById('btn-change-version').disabled = false;
+  });
+
   // Kick everything off
   startPolling();
   connectMetricsWs();
   loadProperties();
+  loadVersions();
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -887,6 +944,101 @@ async function saveProperties() {
     showToast(resp.message, resp.requires_restart ? 'info' : 'success');
   } catch (e) {
     showToast(e.message, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Version Management
+// ═══════════════════════════════════════════════════════════════════
+async function loadVersions() {
+  if (!apiKey) return;
+  try {
+    const data = await apiFetch('/api/server/versions');
+    const select = document.getElementById('mc-version-select');
+    const badge = document.getElementById('current-version-badge');
+
+    // Update current version badge
+    badge.textContent = data.current || '—';
+
+    // Populate dropdown
+    select.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.disabled = true;
+    placeholder.selected = true;
+    placeholder.textContent = '— Select version —';
+    select.appendChild(placeholder);
+
+    for (const ver of data.versions) {
+      const opt = document.createElement('option');
+      opt.value = ver;
+      opt.textContent = ver;
+      // Mark current version
+      if (ver === data.current) {
+        opt.textContent = `${ver} (current)`;
+        opt.style.color = '#4ade80';
+      }
+      select.appendChild(opt);
+    }
+
+    document.getElementById('btn-change-version').disabled = true;
+  } catch (e) {
+    console.warn('Failed to load versions:', e.message);
+  }
+}
+
+async function changeVersion() {
+  if (!apiKey) { showToast('Set an API key first.', 'error'); return; }
+
+  const select = document.getElementById('mc-version-select');
+  const version = select.value;
+  if (!version) { showToast('Select a version first.', 'error'); return; }
+
+  // Check if server is running
+  if (currentStatus === 'Running' || currentStatus === 'Starting') {
+    showToast('Stop the server before changing version.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btn-change-version');
+  const btnIcon = document.getElementById('version-btn-icon');
+  const btnText = document.getElementById('version-btn-text');
+  const statusEl = document.getElementById('version-download-status');
+
+  // Show loading state
+  btn.disabled = true;
+  btnIcon.textContent = '⟳';
+  btnIcon.className = 'spinner';
+  btnText.textContent = 'Downloading…';
+  statusEl.textContent = `Downloading PaperMC ${version}… This may take a moment.`;
+  statusEl.classList.remove('hidden');
+
+  try {
+    const result = await apiFetch('/api/server/version', {
+      method: 'POST',
+      body: JSON.stringify({ version }),
+    });
+    showToast(result.message, 'success');
+    addConsoleLine(`[MC Manager] ${result.message}`, 'done');
+    statusEl.textContent = `✅ Version ${version} ready.`;
+    statusEl.style.color = '#4ade80';
+
+    // Refresh version list
+    await loadVersions();
+  } catch (e) {
+    showToast(`Version change failed: ${e.message}`, 'error');
+    statusEl.textContent = `❌ Failed: ${e.message}`;
+    statusEl.style.color = '#f87171';
+  } finally {
+    btnIcon.textContent = '⬇';
+    btnIcon.className = '';
+    btnText.textContent = 'Apply';
+    btn.disabled = false;
+    // Hide status after 8 seconds
+    setTimeout(() => {
+      statusEl.classList.add('hidden');
+      statusEl.style.color = '';
+    }, 8000);
   }
 }
 

@@ -11,6 +11,8 @@ POST /api/server/stop           — Stop Minecraft server
 GET  /api/server/status         — Server status + uptime
 GET  /api/server/properties     — Read server.properties
 POST /api/server/properties     — Update server.properties
+GET  /api/server/versions       — List available MC versions
+POST /api/server/version        — Change MC version & download jar
 WS   /ws/console                — Real-time console I/O
 WS   /ws/metrics                — Live system metrics (2s interval)
 
@@ -186,6 +188,44 @@ async def api_set_properties(request: Request):
         "requires_restart": running,
         "updated_keys": list(clean.keys()),
     }
+
+
+# ---------------------------------------------------------------------------
+# Version management routes
+# ---------------------------------------------------------------------------
+
+@app.get("/api/server/versions", dependencies=[Depends(require_api_key)])
+async def api_get_versions():
+    """Return the current MC version and a list of all available PaperMC versions."""
+    return await server_manager.get_available_versions()
+
+
+@app.post("/api/server/version", dependencies=[Depends(require_api_key)])
+async def api_set_version(request: Request):
+    """
+    Change the Minecraft server version.
+    Server must be offline. Body: { "version": "1.21.4" }
+    Downloads the PaperMC jar for the requested version.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Request body must be valid JSON.")
+
+    version = body.get("version", "").strip() if isinstance(body, dict) else ""
+    if not version:
+        raise HTTPException(status_code=400, detail="Missing 'version' field.")
+
+    try:
+        result = await server_manager.change_version(version)
+        return result
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    except Exception as exc:
+        logger.exception("Failed to change version: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Version change failed: {exc}")
 
 
 # ---------------------------------------------------------------------------
