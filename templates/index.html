@@ -3,47 +3,46 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MC Manager — Minecraft Server Dashboard</title>
-  <meta name="description" content="One-click Minecraft server management dashboard. Start, stop, monitor, and control your server from any browser." />
+  <title>TamiVer &mdash; Pro Server Manager</title>
+  <meta name="description" content="Next-generation Minecraft server management dashboard." />
 
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 
   <script>
     tailwind.config = {
       darkMode: 'class',
       theme: {
         extend: {
-          fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+          fontFamily: { 
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'], 
+            mono: ['"JetBrains Mono"', 'monospace'] 
+          },
           colors: {
             brand: {
-              50:  '#f0fdf4',
-              100: '#dcfce7',
-              400: '#4ade80',
-              500: '#22c55e',
-              600: '#16a34a',
-              700: '#15803d',
-              900: '#14532d',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
             },
             surface: {
-              900: '#0a0e17',
-              800: '#0f1623',
-              700: '#151e2e',
-              600: '#1c2840',
-              500: '#243356',
+              950: '#09090b',
+              900: '#18181b',
+              800: '#27272a',
             }
           },
           animation: {
             'pulse-slow': 'pulse 3s cubic-bezier(0.4,0,0.6,1) infinite',
-            'fade-in': 'fadeIn 0.4s ease-out',
-            'slide-up': 'slideUp 0.3s ease-out',
+            'fade-in': 'fadeIn 0.5s ease-out',
+            'slide-up': 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+            'float': 'float 6s ease-in-out infinite',
           },
           keyframes: {
-            fadeIn: { '0%': { opacity: '0', transform: 'translateY(8px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
-            slideUp: { '0%': { opacity: '0', transform: 'translateY(16px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+            fadeIn: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+            slideUp: { '0%': { opacity: '0', transform: 'translateY(20px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+            float: { '0%, 100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-10px)' } },
           }
         }
       }
@@ -52,631 +51,529 @@
 
   <style>
     * { box-sizing: border-box; }
-    body { background: #0a0e17; }
+    body { 
+      background: #09090b;
+      color: #e4e4e7;
+    }
 
-    /* Glassmorphism cards */
-    .glass {
-      background: rgba(15, 22, 35, 0.8);
-      backdrop-filter: blur(12px);
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+    /* Glassmorphism */
+    .glass-panel {
+      background: rgba(24, 24, 27, 0.6);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+      border-radius: 20px;
     }
 
-    /* Animated gradient header */
-    .header-gradient {
-      background: linear-gradient(135deg, #0f3d1a 0%, #0a0e17 40%, #0f1a3d 100%);
-      border-bottom: 1px solid rgba(74, 222, 128, 0.12);
+    /* Inputs */
+    .field-input {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #fafafa;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .field-input:focus {
+      outline: none;
+      border-color: #10b981;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+      background: rgba(0, 0, 0, 0.5);
     }
 
-    /* Status indicator glow */
-    .status-online  { box-shadow: 0 0 0 3px rgba(74,222,128,0.2), 0 0 16px rgba(74,222,128,0.4); background: #22c55e; }
-    .status-offline { box-shadow: 0 0 0 3px rgba(239,68,68,0.2),  0 0 16px rgba(239,68,68,0.4);  background: #ef4444; }
-    .status-pending { box-shadow: 0 0 0 3px rgba(234,179,8,0.2),  0 0 16px rgba(234,179,8,0.4);  background: #eab308; }
-    .status-crashed { box-shadow: 0 0 0 3px rgba(249,115,22,0.2), 0 0 16px rgba(249,115,22,0.4); background: #f97316; }
+    /* Buttons */
+    .btn-primary {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.3);
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-primary::after {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 100%);
+      opacity: 0; transition: opacity 0.2s ease;
+    }
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px 0 rgba(16, 185, 129, 0.4);
+    }
+    .btn-primary:hover:not(:disabled)::after { opacity: 1; }
+    
+    .btn-danger {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      box-shadow: 0 4px 14px 0 rgba(239, 68, 68, 0.3);
+      transition: all 0.2s ease;
+    }
+    .btn-danger:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px 0 rgba(239, 68, 68, 0.4);
+    }
+
+    .btn-primary:disabled, .btn-danger:disabled, .btn-version:disabled {
+      filter: grayscale(100%);
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    .btn-version {
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.3);
+      transition: all 0.2s ease;
+    }
+    .btn-version:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px 0 rgba(99, 102, 241, 0.4);
+    }
+
+    /* Status Indicators */
+    .status-online  { background: #10b981; box-shadow: 0 0 12px #10b981, 0 0 0 4px rgba(16,185,129,0.2); }
+    .status-offline { background: #ef4444; box-shadow: 0 0 12px #ef4444, 0 0 0 4px rgba(239,68,68,0.2); }
+    .status-pending { background: #f59e0b; box-shadow: 0 0 12px #f59e0b, 0 0 0 4px rgba(245,158,11,0.2); }
+    .status-crashed { background: #f97316; box-shadow: 0 0 12px #f97316, 0 0 0 4px rgba(249,115,22,0.2); }
+
+    /* Progress Bars */
+    .bar-track { 
+      background: rgba(255,255,255,0.05); 
+      border-radius: 99px; 
+      overflow: hidden; 
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .bar-fill { 
+      height: 100%;
+      border-radius: 99px; 
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); 
+    }
+    .bar-cpu  { background: linear-gradient(90deg, #3b82f6, #06b6d4); }
+    .bar-ram  { background: linear-gradient(90deg, #8b5cf6, #d946ef); }
+    .bar-java { background: linear-gradient(90deg, #10b981, #84cc16); }
 
     /* Console */
     #console-output {
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.78rem;
-      line-height: 1.6;
-      color: #a8c0a0;
-      scrollbar-width: thin;
-      scrollbar-color: #243356 transparent;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 12px;
+      box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
     }
-    #console-output::-webkit-scrollbar { width: 5px; }
-    #console-output::-webkit-scrollbar-thumb { background: #243356; border-radius: 4px; }
-
-    .console-line { animation: fadeIn 0.15s ease-out; }
+    .console-line { animation: fadeIn 0.2s ease-out; word-break: break-all; }
     .console-line.warn  { color: #fbbf24; }
     .console-line.error { color: #f87171; }
-    .console-line.info  { color: #60a5fa; }
-    .console-line.done  { color: #4ade80; }
+    .console-line.info  { color: #38bdf8; }
+    .console-line.done  { color: #34d399; }
+    .console-line:hover { background: rgba(255,255,255,0.02); }
 
-    /* Version selector */
-    .version-section {
-      background: rgba(10, 14, 23, 0.6);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 12px;
-      padding: 12px;
+    /* Checkbox toggle */
+    .toggle-checkbox:checked + .toggle-label {
+      background-color: #10b981;
+      border-color: #10b981;
     }
-    .version-badge {
-      display: inline-flex; align-items: center; gap: 4px;
-      padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 600;
-      background: rgba(74,222,128,0.1); color: #4ade80;
-      border: 1px solid rgba(74,222,128,0.2);
-    }
-    .btn-version {
-      background: linear-gradient(135deg, #6366f1, #4f46e5);
-      box-shadow: 0 4px 15px rgba(99,102,241,0.3);
-      transition: all 0.2s;
-    }
-    .btn-version:hover:not(:disabled) {
-      background: linear-gradient(135deg, #818cf8, #6366f1);
-      box-shadow: 0 6px 20px rgba(99,102,241,0.5);
-      transform: translateY(-1px);
-    }
-    .btn-version:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .spinner { animation: spin 0.8s linear infinite; display: inline-block; }
-
-    /* Progress bars */
-    .bar-track { background: rgba(36,51,86,0.6); border-radius: 9999px; overflow: hidden; }
-    .bar-fill  { border-radius: 9999px; transition: width 0.5s ease; }
-    .bar-cpu   { background: linear-gradient(90deg, #3b82f6, #06b6d4); }
-    .bar-ram   { background: linear-gradient(90deg, #8b5cf6, #ec4899); }
-    .bar-java  { background: linear-gradient(90deg, #22c55e, #84cc16); }
-
-    /* Buttons */
-    .btn-primary {
-      background: linear-gradient(135deg, #16a34a, #15803d);
-      box-shadow: 0 4px 15px rgba(22,163,74,0.3);
-      transition: all 0.2s;
-    }
-    .btn-primary:hover:not(:disabled) {
-      background: linear-gradient(135deg, #22c55e, #16a34a);
-      box-shadow: 0 6px 20px rgba(22,163,74,0.5);
-      transform: translateY(-1px);
-    }
-    .btn-danger {
-      background: linear-gradient(135deg, #dc2626, #b91c1c);
-      box-shadow: 0 4px 15px rgba(220,38,38,0.3);
-      transition: all 0.2s;
-    }
-    .btn-danger:hover:not(:disabled) {
-      box-shadow: 0 6px 20px rgba(220,38,38,0.5);
-      transform: translateY(-1px);
-    }
-    .btn-primary:disabled, .btn-danger:disabled {
-      opacity: 0.35; cursor: not-allowed; transform: none;
+    .toggle-checkbox:checked + .toggle-label .toggle-knob {
+      transform: translateX(100%);
     }
 
-    /* Input fields */
-    .field-input {
-      background: rgba(10, 14, 23, 0.8);
-      border: 1px solid rgba(255,255,255,0.08);
-      color: #e2e8f0;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .field-input:focus {
-      outline: none;
-      border-color: rgba(74, 222, 128, 0.4);
-      box-shadow: 0 0 0 3px rgba(74,222,128,0.08);
+    /* Ambient background blobs */
+    .bg-blob {
+      position: absolute;
+      filter: blur(120px);
+      border-radius: 50%;
+      z-index: 0;
+      opacity: 0.4;
+      pointer-events: none;
     }
 
-    /* Minecraft pixel icon */
-    .mc-icon {
-      width: 32px; height: 32px;
-      background: linear-gradient(135deg, #5b3a29, #3d2818);
-      border: 2px solid #7c5c3f;
-      border-radius: 4px;
-      display: grid;
-      place-items: center;
-      font-size: 18px;
-    }
-
-    /* Tooltip */
+    /* Tooltips */
     .tooltip { position: relative; }
     .tooltip::after {
       content: attr(data-tip);
-      position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%);
-      background: #1c2840; color: #94a3b8; font-size: 0.7rem;
-      padding: 4px 8px; border-radius: 6px; white-space: nowrap;
-      opacity: 0; pointer-events: none; transition: opacity 0.15s;
-      border: 1px solid rgba(255,255,255,0.06);
+      position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%) scale(0.95);
+      background: rgba(24, 24, 27, 0.95); color: #fff; font-size: 0.75rem; font-weight: 500;
+      padding: 6px 10px; border-radius: 8px; white-space: nowrap;
+      opacity: 0; visibility: hidden; transition: all 0.2s ease;
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
-    .tooltip:hover::after { opacity: 1; }
+    .tooltip:hover::after { opacity: 1; visibility: visible; transform: translateX(-50%) scale(1); }
 
-    /* Notification toast */
+    /* Toasts */
     #toast {
-      position: fixed; top: 1.25rem; right: 1.25rem; z-index: 9999;
-      min-width: 280px; padding: 0.75rem 1.25rem;
-      border-radius: 10px; font-size: 0.85rem; font-weight: 500;
-      display: none; animation: slideUp 0.25s ease-out;
+      position: fixed; bottom: 2rem; right: 2rem; z-index: 9999;
+      min-width: 300px; padding: 1rem 1.25rem;
+      border-radius: 16px; font-size: 0.9rem; font-weight: 500;
+      display: none; animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
       backdrop-filter: blur(12px);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
     }
-    #toast.success { background: rgba(22,163,74,0.15); border: 1px solid rgba(74,222,128,0.3); color: #4ade80; }
-    #toast.error   { background: rgba(220,38,38,0.15);  border: 1px solid rgba(248,113,113,0.3); color: #f87171; }
-    #toast.info    { background: rgba(59,130,246,0.15); border: 1px solid rgba(96,165,250,0.3);  color: #60a5fa; }
+    #toast.success { background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; }
+    #toast.error   { background: rgba(239, 68, 68, 0.15);  border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; }
+    #toast.info    { background: rgba(59, 130, 246, 0.15); border: 1px solid rgba(59, 130, 246, 0.3);  color: #7dd3fc; }
 
-    /* Uptime ticker */
-    #uptime-display { font-variant-numeric: tabular-nums; }
-
-    /* Section reveal */
-    .section-fade { animation: fadeIn 0.4s ease-out; }
-
-    /* Network card */
-    .net-address {
-      font-family: 'JetBrains Mono', monospace;
-      background: rgba(10, 14, 23, 0.8);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 8px;
-      padding: 8px 12px;
-      font-size: 0.85rem;
-      color: #e2e8f0;
-      letter-spacing: 0.5px;
-      user-select: all;
-    }
-    .copy-btn {
-      background: rgba(74,222,128,0.1);
-      border: 1px solid rgba(74,222,128,0.2);
-      color: #4ade80;
-      padding: 6px 10px;
-      border-radius: 8px;
-      font-size: 0.7rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .copy-btn:hover {
-      background: rgba(74,222,128,0.2);
-      border-color: rgba(74,222,128,0.4);
-    }
-    .mode-badge {
-      display: inline-flex; align-items: center; gap: 4px;
-      padding: 3px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 600;
-    }
-    .mode-cracked {
-      background: rgba(74,222,128,0.1); color: #4ade80;
-      border: 1px solid rgba(74,222,128,0.2);
-    }
-    .mode-premium {
-      background: rgba(234,179,8,0.1); color: #eab308;
-      border: 1px solid rgba(234,179,8,0.2);
-    }
-    .playit-btn {
-      background: linear-gradient(135deg, #f59e0b, #d97706);
-      box-shadow: 0 4px 15px rgba(245,158,11,0.3);
-      transition: all 0.2s;
-      text-decoration: none;
-    }
-    .playit-btn:hover {
-      box-shadow: 0 6px 20px rgba(245,158,11,0.5);
-      transform: translateY(-1px);
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 1s linear infinite; display: inline-block; }
   </style>
 </head>
+<body class="h-screen w-screen overflow-hidden flex font-sans antialiased relative">
 
-<body class="min-h-screen text-slate-200 antialiased font-sans">
-
-<!-- ─── TOAST ────────────────────────────────────────────────────────────── -->
-<div id="toast" role="alert"></div>
-
-<!-- ─── HEADER ───────────────────────────────────────────────────────────── -->
-<header class="header-gradient sticky top-0 z-50">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-
-    <!-- Brand -->
-    <div class="flex items-center gap-3">
-      <div class="mc-icon">⛏️</div>
-      <div>
-        <h1 class="text-xl font-bold text-white tracking-tight">MC Manager</h1>
-        <p class="text-xs text-slate-400 leading-none mt-0.5">Minecraft Server Dashboard</p>
-      </div>
-    </div>
-
-    <!-- Status pill -->
-    <div class="flex items-center gap-3">
-      <div class="flex items-center gap-2 glass px-4 py-2 rounded-full">
-        <div id="status-dot" class="w-2.5 h-2.5 rounded-full status-offline animate-pulse-slow"></div>
-        <span id="status-text" class="text-sm font-semibold text-slate-300">Offline</span>
-      </div>
-      <div id="uptime-display" class="hidden glass px-3 py-1.5 rounded-full text-xs text-brand-400 font-mono">
-        ⏱ <span id="uptime-value">00:00:00</span>
-      </div>
-    </div>
-
-    <!-- API Key entry -->
-    <div class="flex items-center gap-2">
-      <input
-        id="api-key-input"
-        type="password"
-        placeholder="Enter API Key…"
-        class="field-input text-sm rounded-lg px-3 py-1.5 w-44"
-        autocomplete="off"
-      />
-      <button id="save-key-btn"
-        class="text-xs px-3 py-1.5 rounded-lg font-semibold"
-        style="background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);color:#4ade80;transition:background 0.2s"
-        onmouseover="this.style.background='rgba(74,222,128,0.2)'"
-        onmouseout="this.style.background='rgba(74,222,128,0.1)'"
-      >Save</button>
-    </div>
+  <!-- Ambient Background -->
+  <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
+    <div class="bg-blob w-[600px] h-[600px] bg-emerald-600/20 top-[-20%] left-[-10%] animate-float"></div>
+    <div class="bg-blob w-[500px] h-[500px] bg-indigo-600/20 bottom-[-20%] right-[-10%] animate-float" style="animation-delay: -3s;"></div>
   </div>
-</header>
 
-<!-- ─── MAIN CONTENT ──────────────────────────────────────────────────────── -->
-<main class="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8 section-fade">
+  <!-- Toast Notification -->
+  <div id="toast" role="alert"></div>
 
-  <!-- ── ROW 1: Controls + Metrics ── -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-    <!-- Server Controls -->
-    <div class="glass rounded-2xl p-6 flex flex-col gap-5">
-      <div class="flex items-center gap-2">
-        <span class="text-lg">🎮</span>
-        <h2 class="text-base font-semibold text-white">Server Controls</h2>
-      </div>
-
-      <div class="flex gap-3">
-        <button id="btn-start"
-          class="btn-primary flex-1 py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2">
-          <span>▶</span> Start
-        </button>
-        <button id="btn-stop"
-          class="btn-danger flex-1 py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2" disabled>
-          <span>⏹</span> Stop
-        </button>
-      </div>
-
-      <!-- Minecraft Version Selector -->
-      <div class="version-section space-y-2.5">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <span class="text-sm">🧊</span>
-            <span class="text-xs font-semibold text-slate-300">Minecraft Version</span>
-          </div>
-          <span id="current-version-badge" class="version-badge">—</span>
+  <!-- SIDEBAR -->
+  <aside class="w-[340px] h-full border-r border-white/5 bg-surface-950/40 backdrop-blur-3xl flex flex-col z-10 relative shrink-0">
+    
+    <!-- Header / Brand -->
+    <div class="p-8 pb-6 border-b border-white/5">
+      <div class="flex items-center gap-4 mb-8">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-zinc-800 to-zinc-900 border border-white/10 flex items-center justify-center shadow-lg">
+          <span class="text-2xl drop-shadow-md">⛏️</span>
         </div>
+        <div>
+          <h1 class="text-xl font-bold text-white tracking-tight">TamiVer</h1>
+          <p class="text-xs text-zinc-400 font-medium">Pro Server Manager</p>
+        </div>
+      </div>
+
+      <!-- Global Status -->
+      <div class="glass-panel p-4 mb-4">
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Status</span>
+          <div id="uptime-display" class="hidden text-xs font-mono text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-md border border-emerald-400/20">
+            <span id="uptime-value">00:00:00</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-3 mt-2">
+          <div id="status-dot" class="w-3 h-3 rounded-full status-offline"></div>
+          <span id="status-text" class="text-lg font-bold text-white">Offline</span>
+        </div>
+      </div>
+
+      <!-- API Key -->
+      <div class="space-y-1.5 mt-6">
+        <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest pl-1">API Key</label>
         <div class="flex gap-2">
-          <select id="mc-version-select" class="field-input flex-1 rounded-lg px-3 py-2 text-sm">
-            <option value="" disabled selected>Loading versions…</option>
-          </select>
-          <button id="btn-change-version"
-            class="btn-version px-3 py-2 rounded-lg text-xs font-bold text-white flex items-center gap-1.5"
-            disabled>
-            <span id="version-btn-icon">⬇</span>
-            <span id="version-btn-text">Apply</span>
+          <input id="api-key-input" type="password" placeholder="••••••••" class="field-input w-full rounded-xl px-3 py-2 text-sm font-mono" autocomplete="off" />
+          <button id="save-key-btn" class="bg-zinc-800 hover:bg-zinc-700 text-white border border-white/10 rounded-xl px-4 text-sm font-medium transition-colors">
+            Save
           </button>
         </div>
-        <p id="version-download-status" class="text-xs text-slate-500 hidden"></p>
-      </div>
-
-      <!-- Quick info -->
-      <div class="space-y-2 text-sm">
-        <div class="flex justify-between">
-          <span class="text-slate-400">PID</span>
-          <span id="info-pid" class="font-mono text-slate-300">—</span>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-slate-400">Status</span>
-          <span id="info-status" class="font-semibold text-slate-300">Offline</span>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-slate-400">Uptime</span>
-          <span id="info-uptime" class="font-mono text-slate-300">—</span>
-        </div>
-      </div>
-
-      <!-- Connection badge -->
-      <div class="mt-auto pt-3 border-t border-white/5 flex items-center justify-between text-xs text-slate-500">
-        <span>WS Console</span>
-        <span id="ws-console-badge" class="px-2 py-0.5 rounded-full" style="background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.2)">Disconnected</span>
       </div>
     </div>
 
-    <!-- Host Metrics -->
-    <div class="glass rounded-2xl p-6 flex flex-col gap-4">
-      <div class="flex items-center gap-2">
-        <span class="text-lg">🖥️</span>
-        <h2 class="text-base font-semibold text-white">Host System</h2>
+    <!-- Scrollable Sidebar Content -->
+    <div class="flex-1 overflow-y-auto p-8 pt-6 space-y-8">
+      
+      <!-- Quick Info -->
+      <div class="space-y-3 text-sm">
+        <h3 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Details</h3>
+        <div class="flex justify-between items-center py-1 border-b border-white/5">
+          <span class="text-zinc-400">Process ID</span>
+          <span id="info-pid" class="font-mono text-zinc-300 font-medium">—</span>
+        </div>
+        <div class="flex justify-between items-center py-1 border-b border-white/5 hidden">
+          <span class="text-zinc-400">Status</span>
+          <span id="info-status" class="font-medium text-zinc-300">Offline</span>
+        </div>
+        <div class="flex justify-between items-center py-1 border-b border-white/5 hidden">
+          <span class="text-zinc-400">Uptime</span>
+          <span id="info-uptime" class="font-mono text-zinc-300 font-medium">—</span>
+        </div>
+        <div class="flex justify-between items-center py-1 border-b border-white/5">
+          <span class="text-zinc-400">Console WS</span>
+          <span id="ws-console-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 font-bold uppercase tracking-wider">Disconnected</span>
+        </div>
       </div>
 
+      <!-- Host Metrics -->
       <div class="space-y-4">
-        <!-- CPU -->
+        <h3 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+          <span>🖥️</span> Host System
+        </h3>
         <div>
           <div class="flex justify-between text-xs mb-1.5">
-            <span class="text-slate-400">CPU Usage</span>
-            <span id="host-cpu-val" class="text-slate-200 font-mono font-semibold">0%</span>
+            <span class="text-zinc-400">CPU Usage</span>
+            <span id="host-cpu-val" class="text-zinc-200 font-mono font-medium">0%</span>
           </div>
-          <div class="bar-track h-2">
-            <div id="host-cpu-bar" class="bar-fill bar-cpu h-full" style="width:0%"></div>
-          </div>
+          <div class="bar-track h-1.5"><div id="host-cpu-bar" class="bar-fill bar-cpu" style="width:0%"></div></div>
         </div>
-        <!-- RAM -->
         <div>
           <div class="flex justify-between text-xs mb-1.5">
-            <span class="text-slate-400">RAM Usage</span>
-            <span id="host-ram-val" class="text-slate-200 font-mono font-semibold">0 MB / 0 MB</span>
+            <span class="text-zinc-400">RAM Usage</span>
+            <span id="host-ram-val" class="text-zinc-200 font-mono font-medium">0 MB</span>
           </div>
-          <div class="bar-track h-2">
-            <div id="host-ram-bar" class="bar-fill bar-ram h-full" style="width:0%"></div>
-          </div>
+          <div class="bar-track h-1.5"><div id="host-ram-bar" class="bar-fill bar-ram" style="width:0%"></div></div>
         </div>
       </div>
 
-      <div class="text-xs text-slate-500 mt-auto pt-2 border-t border-white/5">
-        Updates every 2s via WebSocket
-      </div>
-    </div>
+      <!-- Java Metrics -->
+      <div class="space-y-4">
+        <h3 class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+          <span>☕</span> Java Process
+        </h3>
+        
+        <div id="java-metrics-offline" class="py-4 text-center border border-dashed border-white/10 rounded-xl bg-white/[0.02]">
+          <span class="text-zinc-600 text-xs font-medium">Server is offline</span>
+        </div>
 
-    <!-- Java Process Metrics -->
-    <div class="glass rounded-2xl p-6 flex flex-col gap-4">
-      <div class="flex items-center gap-2">
-        <span class="text-lg">☕</span>
-        <h2 class="text-base font-semibold text-white">Java Process</h2>
-      </div>
-
-      <div id="java-metrics-offline" class="flex flex-col items-center justify-center flex-1 gap-2 text-slate-500 py-6">
-        <span class="text-3xl">💤</span>
-        <span class="text-sm">Server offline</span>
-      </div>
-
-      <div id="java-metrics-live" class="hidden space-y-4">
-        <!-- Java CPU -->
-        <div>
-          <div class="flex justify-between text-xs mb-1.5">
-            <span class="text-slate-400">Java CPU</span>
-            <span id="java-cpu-val" class="text-slate-200 font-mono font-semibold">0%</span>
-          </div>
-          <div class="bar-track h-2">
-            <div id="java-cpu-bar" class="bar-fill bar-java h-full" style="width:0%"></div>
-          </div>
-        </div>
-        <!-- Java RAM -->
-        <div>
-          <div class="flex justify-between text-xs mb-1.5">
-            <span class="text-slate-400">Java RAM (RSS)</span>
-            <span id="java-ram-val" class="text-slate-200 font-mono font-semibold">0 MB</span>
-          </div>
-          <div class="bar-track h-2">
-            <div id="java-ram-bar" class="bar-fill bar-java h-full" style="width:0%"></div>
-          </div>
-        </div>
-        <div class="flex justify-between text-xs">
-          <span class="text-slate-400">PID</span>
-          <span id="java-pid-val" class="font-mono text-brand-400">—</span>
-        </div>
-      </div>
-
-      <div class="text-xs text-slate-500 mt-auto pt-2 border-t border-white/5">
-        RSS = Resident Set Size
-      </div>
-    </div>
-  </div>
-
-  <!-- ── ROW 2: Properties + Console ── -->
-  <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
-
-    <!-- Server Properties -->
-    <div class="xl:col-span-2 glass rounded-2xl p-6 flex flex-col gap-5">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <span class="text-lg">⚙️</span>
-          <h2 class="text-base font-semibold text-white">Server Properties</h2>
-        </div>
-        <button id="reload-props-btn"
-          class="tooltip text-xs px-2.5 py-1 rounded-lg text-slate-400"
-          data-tip="Reload from file"
-          style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08)">
-          ↻ Reload
-        </button>
-      </div>
-
-      <div class="space-y-3 flex-1">
-        <!-- Port -->
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Server Port</label>
-          <input id="prop-port" type="number" value="25565" class="field-input w-full rounded-lg px-3 py-2 text-sm" />
-        </div>
-        <!-- MOTD -->
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">MOTD (Server Description)</label>
-          <input id="prop-motd" type="text" class="field-input w-full rounded-lg px-3 py-2 text-sm" />
-        </div>
-        <!-- Max Players -->
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Max Players</label>
-          <input id="prop-max-players" type="number" value="20" class="field-input w-full rounded-lg px-3 py-2 text-sm" />
-        </div>
-        <!-- Gamemode -->
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Default Gamemode</label>
-          <select id="prop-gamemode" class="field-input w-full rounded-lg px-3 py-2 text-sm">
-            <option value="survival">Survival</option>
-            <option value="creative">Creative</option>
-            <option value="adventure">Adventure</option>
-            <option value="spectator">Spectator</option>
-          </select>
-        </div>
-        <!-- Difficulty -->
-        <div>
-          <label class="text-xs text-slate-400 mb-1 block">Difficulty</label>
-          <select id="prop-difficulty" class="field-input w-full rounded-lg px-3 py-2 text-sm">
-            <option value="peaceful">Peaceful</option>
-            <option value="easy">Easy</option>
-            <option value="normal" selected>Normal</option>
-            <option value="hard">Hard</option>
-          </select>
-        </div>
-        <!-- Whitelist toggle -->
-        <div class="flex items-center justify-between">
-          <label class="text-xs text-slate-400">Whitelist Enabled</label>
-          <div class="relative">
-            <input type="checkbox" id="prop-whitelist" class="sr-only peer" />
-            <label for="prop-whitelist"
-              class="block w-10 h-6 rounded-full cursor-pointer transition-colors"
-              style="background:#1c2840;border:1px solid rgba(255,255,255,0.1)"
-              id="whitelist-label">
-              <span
-                class="absolute left-1 top-1 w-4 h-4 rounded-full transition-transform bg-slate-500"
-                id="whitelist-knob"></span>
-            </label>
-          </div>
-        </div>
-        <!-- Online Mode toggle -->
-        <div class="flex items-center justify-between">
+        <div id="java-metrics-live" class="hidden space-y-4">
           <div>
-            <label class="text-xs text-slate-400">Online Mode</label>
-            <p class="text-[10px] text-slate-600 mt-0.5">OFF = TLauncher/Cracked dapat join</p>
+            <div class="flex justify-between text-xs mb-1.5">
+              <span class="text-zinc-400">CPU Usage</span>
+              <span id="java-cpu-val" class="text-zinc-200 font-mono font-medium">0%</span>
+            </div>
+            <div class="bar-track h-1.5"><div id="java-cpu-bar" class="bar-fill bar-java" style="width:0%"></div></div>
           </div>
-          <div class="relative">
-            <input type="checkbox" id="prop-online-mode" class="sr-only peer" />
-            <label for="prop-online-mode"
-              class="block w-10 h-6 rounded-full cursor-pointer transition-colors"
-              style="background:#1c2840;border:1px solid rgba(255,255,255,0.1)"
-              id="onlinemode-label">
-              <span
-                class="absolute left-1 top-1 w-4 h-4 rounded-full transition-transform bg-slate-500"
-                id="onlinemode-knob"></span>
-            </label>
+          <div>
+            <div class="flex justify-between text-xs mb-1.5">
+              <span class="text-zinc-400">Allocated RAM</span>
+              <span id="java-ram-val" class="text-zinc-200 font-mono font-medium">0 MB</span>
+            </div>
+            <div class="bar-track h-1.5"><div id="java-ram-bar" class="bar-fill bar-java" style="width:0%"></div></div>
+          </div>
+          <div class="flex justify-between text-xs hidden">
+            <span class="text-zinc-400">PID</span>
+            <span id="java-pid-val" class="font-mono text-zinc-300">—</span>
           </div>
         </div>
       </div>
-
-      <div id="props-warning" class="hidden text-xs text-amber-400 bg-amber-900/20 border border-amber-400/20 rounded-lg px-3 py-2">
-        ⚠️ Server is running — changes will apply on next restart.
-      </div>
-
-      <button id="save-props-btn"
-        class="btn-primary w-full py-2.5 rounded-xl text-sm font-bold text-white">
-        💾 Save Properties
-      </button>
+      
     </div>
 
-    <!-- Console -->
-    <div class="xl:col-span-3 glass rounded-2xl p-6 flex flex-col gap-4" style="min-height: 520px;">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2">
-          <span class="text-lg">💻</span>
-          <h2 class="text-base font-semibold text-white">Live Console</h2>
+    <!-- Sidebar Footer -->
+    <div class="p-6 border-t border-white/5 text-center">
+      <p class="text-[10px] text-zinc-500 font-medium">TamiVer Dashboard v2.0</p>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT AREA -->
+  <main class="flex-1 h-full overflow-y-auto p-8 lg:p-10 relative z-10 scroll-smooth">
+    <div class="max-w-5xl mx-auto space-y-8 animate-fade-in">
+      
+      <!-- TOP ROW: Controls & Version -->
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        
+        <!-- Controls -->
+        <div class="glass-panel p-6 sm:p-8 flex flex-col justify-center">
+          <h2 class="text-xl font-semibold text-white mb-6 flex items-center gap-3">
+            <span>🎮</span> Power Controls
+          </h2>
+          <div class="flex gap-4">
+            <button id="btn-start" class="btn-primary flex-1 py-4 rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-2 shadow-lg">
+              <span class="text-lg">▶</span> Start Server
+            </button>
+            <button id="btn-stop" class="btn-danger flex-1 py-4 rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-2 shadow-lg" disabled>
+              <span class="text-lg">⏹</span> Stop Server
+            </button>
+          </div>
         </div>
-        <div class="flex items-center gap-2">
-          <button id="clear-console-btn"
-            class="text-xs px-2.5 py-1 rounded-lg text-slate-400 tooltip"
-            data-tip="Clear console"
-            style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08)">
-            ✕ Clear
+
+        <!-- Version Manager -->
+        <div class="glass-panel p-6 sm:p-8">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-semibold text-white flex items-center gap-3">
+              <span>🧊</span> Engine & Version
+            </h2>
+            <div class="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-3 py-1 rounded-lg text-xs font-bold shadow-sm">
+              Current: <span id="current-version-badge">Loading...</span>
+            </div>
+          </div>
+          
+          <div class="flex gap-3 mb-2">
+            <select id="mc-version-select" class="field-input flex-1 rounded-xl px-4 py-3 text-sm font-medium focus:ring-0">
+              <option value="" disabled selected>Loading available versions…</option>
+            </select>
+            <button id="btn-change-version" class="btn-version px-6 py-3 rounded-xl text-sm font-bold text-white flex items-center gap-2 shadow-lg" disabled>
+              <span id="version-btn-icon">⬇</span>
+              <span id="version-btn-text">Install</span>
+            </button>
+          </div>
+          <p id="version-download-status" class="text-xs text-zinc-400 mt-2 hidden min-h-[16px]"></p>
+        </div>
+
+      </div>
+
+      <!-- MIDDLE ROW: Properties & Network -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- Server Properties -->
+        <div class="lg:col-span-7 glass-panel p-6 sm:p-8 relative">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-semibold text-white flex items-center gap-3">
+              <span>⚙️</span> Server Properties
+            </h2>
+            <button id="reload-props-btn" class="tooltip bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors" data-tip="Discard changes & reload">
+              ↻ Refresh
+            </button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-5 mb-6">
+            <div class="col-span-2 sm:col-span-1">
+              <label class="text-xs font-medium text-zinc-400 mb-1.5 block">Server Port</label>
+              <input id="prop-port" type="number" class="field-input w-full rounded-xl px-4 py-2.5 text-sm font-mono" />
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="text-xs font-medium text-zinc-400 mb-1.5 block">Max Players</label>
+              <input id="prop-max-players" type="number" class="field-input w-full rounded-xl px-4 py-2.5 text-sm" />
+            </div>
+            <div class="col-span-2">
+              <label class="text-xs font-medium text-zinc-400 mb-1.5 block">MOTD (Message of the Day)</label>
+              <input id="prop-motd" type="text" class="field-input w-full rounded-xl px-4 py-2.5 text-sm" />
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="text-xs font-medium text-zinc-400 mb-1.5 block">Gamemode</label>
+              <select id="prop-gamemode" class="field-input w-full rounded-xl px-4 py-2.5 text-sm capitalize">
+                <option value="survival">Survival</option>
+                <option value="creative">Creative</option>
+                <option value="adventure">Adventure</option>
+                <option value="spectator">Spectator</option>
+              </select>
+            </div>
+            <div class="col-span-2 sm:col-span-1">
+              <label class="text-xs font-medium text-zinc-400 mb-1.5 block">Difficulty</label>
+              <select id="prop-difficulty" class="field-input w-full rounded-xl px-4 py-2.5 text-sm capitalize">
+                <option value="peaceful">Peaceful</option>
+                <option value="easy">Easy</option>
+                <option value="normal">Normal</option>
+                <option value="hard">Hard</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6 p-4 rounded-xl bg-black/20 border border-white/5">
+            <!-- Toggles -->
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="text-sm font-medium text-zinc-300">Whitelist</label>
+                <p class="text-[10px] text-zinc-500">Only approved players</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="prop-whitelist" class="sr-only peer toggle-checkbox">
+                <div class="toggle-label w-11 h-6 bg-zinc-700 rounded-full border border-zinc-600 transition-colors duration-200 ease-in-out" id="whitelist-label">
+                  <div class="toggle-knob w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ease-in-out translate-x-0 mt-[1px] ml-[1px]" id="whitelist-knob"></div>
+                </div>
+              </label>
+            </div>
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="text-sm font-medium text-zinc-300">Online Mode</label>
+                <p class="text-[10px] text-amber-500/80">Turn OFF for TLauncher</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="prop-online-mode" class="sr-only peer toggle-checkbox">
+                <div class="toggle-label w-11 h-6 bg-zinc-700 rounded-full border border-zinc-600 transition-colors duration-200 ease-in-out" id="onlinemode-label">
+                  <div class="toggle-knob w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ease-in-out translate-x-0 mt-[1px] ml-[1px]" id="onlinemode-knob"></div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div id="props-warning" class="hidden mb-5 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-medium flex items-center gap-2">
+            <span>⚠️</span> Changes will apply on the next server restart.
+          </div>
+
+          <button id="save-props-btn" class="btn-primary w-full py-4 rounded-xl text-sm font-bold text-white shadow-lg">
+            💾 Save Properties
           </button>
-          <div class="flex items-center gap-1.5 text-xs text-slate-500">
-            <label for="autoscroll-toggle" class="cursor-pointer">Auto-scroll</label>
-            <input type="checkbox" id="autoscroll-toggle" checked class="accent-green-500" />
+        </div>
+
+        <!-- Network & Multiplayer -->
+        <div class="lg:col-span-5 glass-panel p-6 sm:p-8 flex flex-col">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-semibold text-white flex items-center gap-3">
+              <span>🌐</span> Connectivity
+            </h2>
+            <span id="net-mode-badge" class="px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-zinc-800 border border-zinc-700 text-zinc-300">Loading...</span>
+          </div>
+
+          <div class="flex-1 space-y-6">
+            
+            <!-- LAN -->
+            <div class="p-5 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-purple-500/5 border border-indigo-500/20">
+              <h3 class="text-sm font-semibold text-indigo-300 mb-2 flex items-center gap-2">
+                <span>🏠</span> Local Network (LAN)
+              </h3>
+              <p class="text-xs text-indigo-200/70 mb-3 leading-relaxed">Direct connection for players on the same WiFi network.</p>
+              
+              <div class="flex items-center gap-2 bg-black/40 p-1.5 rounded-xl border border-indigo-500/20">
+                <div id="net-lan-address" class="flex-1 px-3 font-mono text-sm text-indigo-100 select-all tracking-wider">Loading...</div>
+                <button id="copy-lan-btn" class="bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 px-3 py-2 rounded-lg text-xs font-bold transition-colors border border-indigo-500/30" onclick="copyToClipboard('net-lan-address')">
+                  Copy
+                </button>
+              </div>
+              <div class="flex justify-between mt-3 px-1 text-[11px] font-medium text-indigo-300/50 hidden">
+                <span id="net-lan-ip"></span> <span id="net-port"></span>
+              </div>
+            </div>
+
+            <!-- WAN / Playit -->
+            <div class="p-5 rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-500/5 border border-amber-500/20">
+              <h3 class="text-sm font-semibold text-amber-300 mb-2 flex items-center gap-2">
+                <span>🌍</span> Internet Play (WAN)
+              </h3>
+              <p class="text-xs text-amber-200/70 mb-4 leading-relaxed">To play with friends anywhere, use a free secure tunnel.</p>
+              
+              <a href="https://playit.gg" target="_blank" rel="noopener" class="block w-full text-center bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-amber-950 py-3.5 rounded-xl text-sm font-bold transition-all shadow-[0_0_15px_rgba(245,158,11,0.3)] hover:shadow-[0_0_20px_rgba(245,158,11,0.5)] hover:-translate-y-0.5">
+                Setup Playit.gg Tunnel
+              </a>
+            </div>
+
           </div>
         </div>
+
       </div>
 
-      <!-- Console output -->
-      <div id="console-output"
-        class="flex-1 rounded-xl p-4 overflow-y-auto"
-        style="background:#050810;min-height:340px;max-height:420px;border:1px solid rgba(255,255,255,0.04)">
-        <div class="console-line text-slate-500 italic">Waiting for server output…</div>
-      </div>
-
-      <!-- Command input -->
-      <div class="flex gap-2">
-        <span class="flex items-center text-brand-400 font-mono text-sm px-2">›_</span>
-        <input
-          id="cmd-input"
-          type="text"
-          placeholder="Type a command and press Enter…"
-          maxlength="256"
-          class="field-input flex-1 rounded-xl px-4 py-2.5 text-sm font-mono"
-          autocomplete="off"
-          spellcheck="false"
-        />
-        <button id="cmd-send"
-          class="btn-primary px-4 py-2.5 rounded-xl text-sm font-bold text-white"
-          style="min-width: 72px">
-          Send
-        </button>
-      </div>
-      <p class="text-xs text-slate-600 -mt-2">
-        ⚠️ Console commands run with full server authority. Keep your API key private.
-      </p>
-    </div>
-  </div>
-
-  <!-- ── ROW 3: Multiplayer / Network ── -->
-  <div class="glass rounded-2xl p-6 flex flex-col gap-5 section-fade">
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <span class="text-lg">🌐</span>
-        <h2 class="text-base font-semibold text-white">Multiplayer / Network</h2>
-      </div>
-      <span id="net-mode-badge" class="mode-badge mode-cracked">🔓 Cracked OK</span>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-      <!-- LAN Play -->
-      <div class="space-y-3">
-        <h3 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
-          <span>🏠</span> LAN Play (WiFi yang sama)
-        </h3>
-        <p class="text-xs text-slate-500">Teman satu WiFi bisa langsung connect pakai alamat ini di Minecraft:</p>
-        <div class="flex items-center gap-2">
-          <div id="net-lan-address" class="net-address flex-1">Loading…</div>
-          <button id="copy-lan-btn" class="copy-btn" onclick="copyToClipboard('net-lan-address')">📋 Copy</button>
-        </div>
-        <div class="text-xs space-y-1">
-          <div class="flex justify-between text-slate-400">
-            <span>IP Address</span>
-            <span id="net-lan-ip" class="font-mono text-slate-300">—</span>
-          </div>
-          <div class="flex justify-between text-slate-400">
-            <span>Port</span>
-            <span id="net-port" class="font-mono text-slate-300">—</span>
+      <!-- BOTTOM ROW: Console -->
+      <div class="glass-panel p-6 sm:p-8 flex flex-col h-[500px]">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-semibold text-white flex items-center gap-3">
+            <span>💻</span> Live Terminal
+          </h2>
+          <div class="flex items-center gap-4">
+            <label class="flex items-center gap-2 text-xs font-medium text-zinc-400 cursor-pointer hover:text-zinc-200 transition-colors">
+              <input type="checkbox" id="autoscroll-toggle" checked class="rounded bg-zinc-800 border-zinc-600 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-zinc-900" />
+              Auto-scroll
+            </label>
+            <button id="clear-console-btn" class="bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors">
+              ✕ Clear
+            </button>
           </div>
         </div>
-      </div>
 
-      <!-- Internet Play -->
-      <div class="space-y-3">
-        <h3 class="text-sm font-semibold text-slate-300 flex items-center gap-2">
-          <span>🌍</span> Internet Play (Teman luar kota)
-        </h3>
-        <p class="text-xs text-slate-500">
-          Supaya teman dari luar kota bisa join, kamu perlu <strong>tunnel</strong> gratis.
-          Pakai <strong>playit.gg</strong> — paling gampang dan gratis!
-        </p>
-        <a href="https://playit.gg" target="_blank" rel="noopener"
-          class="playit-btn inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white">
-          🚀 Buka playit.gg (Gratis)
-        </a>
-        <div class="text-[11px] text-slate-500 space-y-1 mt-1" style="background:rgba(10,14,23,0.5);border:1px solid rgba(255,255,255,0.04);border-radius:8px;padding:10px">
-          <p class="font-semibold text-slate-400 mb-1">Cara pakai:</p>
-          <p>1️⃣ Buka <a href="https://playit.gg" target="_blank" class="text-amber-400 hover:underline">playit.gg</a> → Download agent</p>
-          <p>2️⃣ Jalankan agent playit di laptop kamu</p>
-          <p>3️⃣ Login, buat tunnel untuk port <strong class="text-slate-300">25565</strong> (Minecraft Java)</p>
-          <p>4️⃣ Dapat alamat publik (misal: <code class="text-slate-300">abc123.playit.gg</code>)</p>
-          <p>5️⃣ Kasih alamat itu ke teman → mereka masukkan di Multiplayer → Add Server</p>
+        <!-- Terminal Output -->
+        <div id="console-output" class="flex-1 p-5 overflow-y-auto mb-4">
+          <div class="console-line text-zinc-500 italic">Server console initialized. Awaiting connection...</div>
+        </div>
+
+        <!-- Command Input -->
+        <div class="relative flex items-center">
+          <div class="absolute left-4 text-emerald-500 font-mono font-bold text-lg">❯</div>
+          <input id="cmd-input" type="text" placeholder="Enter server command..." maxlength="256" class="field-input w-full rounded-xl pl-10 pr-24 py-4 text-sm font-mono shadow-inner" autocomplete="off" spellcheck="false" />
+          <button id="cmd-send" class="absolute right-2 top-2 bottom-2 bg-zinc-800 hover:bg-zinc-700 text-white px-6 rounded-lg text-xs font-bold transition-colors border border-white/10">
+            EXECUTE
+          </button>
         </div>
       </div>
 
     </div>
-
-    <div class="text-xs text-slate-600 pt-2 border-t border-white/5">
-      🛡️ Tips: Kalau pakai TLauncher, pastikan <strong>online-mode = OFF</strong> di Server Properties di atas.
-    </div>
-  </div>
-
-</main>
-
-<!-- ─── FOOTER ────────────────────────────────────────────────────────────── -->
-<footer class="text-center text-xs text-slate-600 py-6 border-t border-white/5 mt-4">
-  MC Manager v2.0 &mdash; <a href="https://papermc.io" target="_blank" class="hover:text-brand-400 transition-colors">Powered by PaperMC</a>
-</footer>
+  </main>
 
 
 <!-- ─── JAVASCRIPT ────────────────────────────────────────────────────────── -->
+
 <script>
 // ═══════════════════════════════════════════════════════════════════
 // Constants & State
@@ -684,7 +581,18 @@
 const BASE_URL = window.location.origin;
 const WS_BASE  = BASE_URL.replace(/^http/, 'ws');
 
-let apiKey = localStorage.getItem('mc_manager_api_key') || '';
+function sanitizeKey(k) {
+  if (!k) return '';
+  let s = k.trim();
+  if (s.includes('=')) {
+    const match = s.match(/(?:API_KEY\s*=\s*)?([a-zA-Z0-9_-]+)/i);
+    if (match) return match[1];
+  }
+  return s.split(/\s+/)[0];
+}
+
+let apiKey = sanitizeKey(localStorage.getItem('mc_manager_api_key') || '');
+if (apiKey) localStorage.setItem('mc_manager_api_key', apiKey);
 let consoleWs   = null;
 let metricsWs   = null;
 let statusInterval = null;
@@ -759,9 +667,11 @@ document.addEventListener('DOMContentLoaded', () => {
 // API Key
 // ═══════════════════════════════════════════════════════════════════
 function saveApiKey() {
-  const val = document.getElementById('api-key-input').value.trim();
+  const raw = document.getElementById('api-key-input').value;
+  const val = sanitizeKey(raw);
   if (!val) { showToast('API key cannot be empty.', 'error'); return; }
   apiKey = val;
+  document.getElementById('api-key-input').value = apiKey;
   localStorage.setItem('mc_manager_api_key', apiKey);
   showToast('API key saved.', 'success');
   // Reconnect websockets with new key
@@ -1203,7 +1113,7 @@ async function changeVersion() {
   btnIcon.textContent = '⟳';
   btnIcon.className = 'spinner';
   btnText.textContent = 'Downloading…';
-  statusEl.textContent = `Downloading PaperMC ${version}… This may take a moment.`;
+  statusEl.textContent = `Downloading Vanilla Mojang ${version}… This may take a moment.`;
   statusEl.classList.remove('hidden');
 
   try {
