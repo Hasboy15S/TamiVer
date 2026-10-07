@@ -121,6 +121,7 @@ level-name=world
 view-distance=10
 simulation-distance=10
 enable-command-block=false
+allow-cheats=false
 pvp=true
 """
 
