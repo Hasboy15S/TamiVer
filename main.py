@@ -33,7 +33,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, WebSocket, status
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, Request, WebSocket, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -140,6 +140,23 @@ async def api_stop():
         raise HTTPException(status_code=500, detail=f"Failed to stop server: {exc}")
 
 
+@app.post("/api/server/restart", dependencies=[Depends(require_api_key)])
+async def api_restart(background_tasks: BackgroundTasks):
+    """Restart the Minecraft server."""
+    if server_manager.status not in (ServerStatus.RUNNING, ServerStatus.STARTING):
+        raise HTTPException(status_code=400, detail="Server is not running.")
+    
+    async def restart_task():
+        try:
+            await server_manager.stop()
+            await server_manager.start()
+        except Exception as exc:
+            logger.exception("Error during background restart: %s", exc)
+            
+    background_tasks.add_task(restart_task)
+    return {"message": "Server restart initiated."}
+
+
 @app.get("/api/server/status", dependencies=[Depends(require_api_key)])
 async def api_status():
     """Return current server status, PID, and uptime in seconds."""
@@ -190,6 +207,48 @@ async def api_set_properties(request: Request):
         "requires_restart": running,
         "updated_keys": list(clean.keys()),
     }
+
+
+# ---------------------------------------------------------------------------
+# Operator management routes
+# ---------------------------------------------------------------------------
+
+@app.get("/api/server/ops", dependencies=[Depends(require_api_key)])
+async def api_get_ops():
+    """Read ops.json and return the list of operators."""
+    ops_file = server_manager._settings.mc_server_dir / "ops.json"
+    if not ops_file.exists():
+        return []
+    try:
+        return json.loads(ops_file.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+@app.post("/api/server/ops", dependencies=[Depends(require_api_key)])
+async def api_add_op(request: Request):
+    """Add an operator. Requires server to be running."""
+    if server_manager.status != ServerStatus.RUNNING:
+        raise HTTPException(status_code=400, detail="Server must be running to manage operators.")
+    try:
+        data = await request.json()
+        username = data.get("username", "").strip()
+        if not username:
+            raise HTTPException(status_code=400, detail="Username is required.")
+        await server_manager.send_command(f"op {username}")
+        return {"message": f"Operator command sent for {username}."}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+@app.delete("/api/server/ops/{username}", dependencies=[Depends(require_api_key)])
+async def api_remove_op(username: str):
+    """Remove an operator. Requires server to be running."""
+    if server_manager.status != ServerStatus.RUNNING:
+        raise HTTPException(status_code=400, detail="Server must be running to manage operators.")
+    try:
+        await server_manager.send_command(f"deop {username}")
+        return {"message": f"Deop command sent for {username}."}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 # ---------------------------------------------------------------------------
