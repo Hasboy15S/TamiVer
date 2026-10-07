@@ -371,12 +371,15 @@
           <h2 class="text-xl font-semibold text-white mb-6 flex items-center gap-3">
             <span>🎮</span> Power Controls
           </h2>
-          <div class="flex gap-4">
+          <div class="flex gap-3">
             <button id="btn-start" class="btn-primary flex-1 py-4 rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-2 shadow-lg">
-              <span class="text-lg">▶</span> Start Server
+              <span class="text-lg">▶</span> Start
+            </button>
+            <button id="btn-restart" class="btn-version flex-1 py-4 rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-2 shadow-lg" disabled>
+              <span class="text-lg">↻</span> Restart
             </button>
             <button id="btn-stop" class="btn-danger flex-1 py-4 rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-2 shadow-lg" disabled>
-              <span class="text-lg">⏹</span> Stop Server
+              <span class="text-lg">⏹</span> Stop
             </button>
           </div>
         </div>
@@ -453,9 +456,9 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-6 p-4 rounded-xl bg-black/20 border border-white/5">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-6 p-4 rounded-xl bg-black/20 border border-white/5">
             <!-- Toggles -->
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between gap-4">
               <div>
                 <label class="text-sm font-medium text-zinc-300">Whitelist</label>
                 <p class="text-[10px] text-zinc-500">Only approved players</p>
@@ -467,7 +470,7 @@
                 </div>
               </label>
             </div>
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between gap-4">
               <div>
                 <label class="text-sm font-medium text-zinc-300">Online Mode</label>
                 <p class="text-[10px] text-amber-500/80">Turn OFF for TLauncher</p>
@@ -476,6 +479,18 @@
                 <input type="checkbox" id="prop-online-mode" class="sr-only peer toggle-checkbox">
                 <div class="toggle-label w-11 h-6 bg-zinc-700 rounded-full border border-zinc-600 transition-colors duration-200 ease-in-out" id="onlinemode-label">
                   <div class="toggle-knob w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ease-in-out translate-x-0 mt-[1px] ml-[1px]" id="onlinemode-knob"></div>
+                </div>
+              </label>
+            </div>
+            <div class="flex items-center justify-between gap-4">
+              <div>
+                <label class="text-sm font-medium text-zinc-300">Allow Cheats</label>
+                <p class="text-[10px] text-purple-400/80">Enable command blocks</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="prop-allow-cheats" class="sr-only peer toggle-checkbox">
+                <div class="toggle-label w-11 h-6 bg-zinc-700 rounded-full border border-zinc-600 transition-colors duration-200 ease-in-out" id="allowcheats-label">
+                  <div class="toggle-knob w-5 h-5 bg-white rounded-full shadow-md transform transition-transform duration-200 ease-in-out translate-x-0 mt-[1px] ml-[1px]" id="allowcheats-knob"></div>
                 </div>
               </label>
             </div>
@@ -531,6 +546,38 @@
               </a>
             </div>
 
+          </div>
+        </div>
+
+        <!-- Operators Management -->
+        <div class="lg:col-span-12 glass-panel p-6 sm:p-8">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+            <h2 class="text-xl font-semibold text-white flex items-center gap-3">
+              <span>👑</span> Server Operators (OPs)
+            </h2>
+            <div class="flex gap-3 w-full sm:w-auto">
+              <input id="op-username-input" type="text" placeholder="Minecraft Username" class="field-input flex-1 sm:w-64 rounded-xl px-4 py-2.5 text-sm" />
+              <button id="add-op-btn" class="btn-primary px-6 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg whitespace-nowrap">
+                + Add OP
+              </button>
+            </div>
+          </div>
+          
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-zinc-400">
+              <thead class="text-xs uppercase bg-black/20 text-zinc-500 border-b border-white/5">
+                <tr>
+                  <th scope="col" class="px-4 py-3 font-semibold rounded-tl-xl">Username</th>
+                  <th scope="col" class="px-4 py-3 font-semibold">UUID</th>
+                  <th scope="col" class="px-4 py-3 font-semibold rounded-tr-xl text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="ops-table-body" class="divide-y divide-white/5 bg-black/10">
+                <tr>
+                  <td colspan="3" class="px-4 py-8 text-center text-zinc-500 italic">Loading operators...</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -625,6 +672,14 @@ document.addEventListener('DOMContentLoaded', () => {
     omKnob.style.background = om.checked ? '#eab308' : '#64748b';
   });
 
+  // Allow-cheats toggle visual
+  const ac = document.getElementById('prop-allow-cheats');
+  const acKnob = document.getElementById('allowcheats-knob');
+  ac.addEventListener('change', () => {
+    acKnob.style.transform = ac.checked ? 'translateX(16px)' : 'translateX(0)';
+    acKnob.style.background = ac.checked ? '#a855f7' : '#64748b';
+  });
+
   // API key save
   document.getElementById('save-key-btn').addEventListener('click', saveApiKey);
   document.getElementById('api-key-input').addEventListener('keydown', e => {
@@ -634,6 +689,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Control buttons
   document.getElementById('btn-start').addEventListener('click', startServer);
   document.getElementById('btn-stop').addEventListener('click', stopServer);
+  document.getElementById('btn-restart').addEventListener('click', restartServer);
 
   // Console
   document.getElementById('cmd-input').addEventListener('keydown', e => {
@@ -655,12 +711,20 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-change-version').disabled = false;
   });
 
+  // Operators
+  document.getElementById('add-op-btn').addEventListener('click', addOp);
+  document.getElementById('op-username-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addOp();
+  });
+
   // Kick everything off
   startPolling();
   connectMetricsWs();
   loadProperties();
   loadVersions();
   loadNetworkInfo();
+  loadOps();
+  setInterval(loadOps, 5000);
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -747,6 +811,7 @@ function updateStatusUI(data) {
   const canStop  = (st === 'Running' || st === 'Starting');
   document.getElementById('btn-start').disabled = !canStart;
   document.getElementById('btn-stop').disabled  = !canStop;
+  document.getElementById('btn-restart').disabled = (st !== 'Running');
 
   // Properties warning
   const warn = document.getElementById('props-warning');
@@ -797,6 +862,21 @@ async function stopServer() {
   } catch (e) {
     showToast(e.message, 'error');
     document.getElementById('btn-stop').disabled = false;
+  }
+}
+
+async function restartServer() {
+  if (!apiKey) { showToast('Set an API key first.', 'error'); return; }
+  document.getElementById('btn-restart').disabled = true;
+  document.getElementById('btn-stop').disabled = true;
+  try {
+    await apiFetch('/api/server/restart', { method: 'POST' });
+    showToast('Restart command sent.', 'info');
+    addConsoleLine('[MC Manager] Restart command sent…', 'warn');
+    setTimeout(fetchStatus, 1500);
+  } catch (e) {
+    showToast(e.message, 'error');
+    document.getElementById('btn-restart').disabled = false;
   }
 }
 
@@ -980,6 +1060,14 @@ async function loadProperties() {
     om.checked = omChecked;
     omKnob.style.transform = omChecked ? 'translateX(16px)' : 'translateX(0)';
     omKnob.style.background = omChecked ? '#eab308' : '#64748b';
+
+    // Allow Cheats
+    const ac = document.getElementById('prop-allow-cheats');
+    const acKnob = document.getElementById('allowcheats-knob');
+    const acChecked = (props['allow-cheats'] === 'true' || props['enable-command-block'] === 'true');
+    ac.checked = acChecked;
+    acKnob.style.transform = acChecked ? 'translateX(16px)' : 'translateX(0)';
+    acKnob.style.background = acChecked ? '#a855f7' : '#64748b';
   } catch (e) {
     console.warn('Failed to load properties:', e.message);
   }
@@ -995,6 +1083,8 @@ async function saveProperties() {
     'difficulty':   document.getElementById('prop-difficulty').value,
     'white-list':   document.getElementById('prop-whitelist').checked ? 'true' : 'false',
     'online-mode':  document.getElementById('prop-online-mode').checked ? 'true' : 'false',
+    'allow-cheats': document.getElementById('prop-allow-cheats').checked ? 'true' : 'false',
+    'enable-command-block': document.getElementById('prop-allow-cheats').checked ? 'true' : 'false',
   };
   try {
     const resp = await apiFetch('/api/server/properties', {
@@ -1142,6 +1232,75 @@ async function changeVersion() {
       statusEl.classList.add('hidden');
       statusEl.style.color = '';
     }, 8000);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Operators Management
+// ═══════════════════════════════════════════════════════════════════
+async function loadOps() {
+  if (!apiKey) return;
+  try {
+    const ops = await apiFetch('/api/server/ops');
+    const tbody = document.getElementById('ops-table-body');
+    tbody.innerHTML = '';
+    
+    if (!ops || ops.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-6 text-center text-zinc-500 italic">No operators found.</td></tr>`;
+      return;
+    }
+    
+    ops.forEach(op => {
+      const tr = document.createElement('tr');
+      tr.className = 'hover:bg-white/5 transition-colors';
+      tr.innerHTML = `
+        <td class="px-4 py-3 font-medium text-white">${op.name}</td>
+        <td class="px-4 py-3 font-mono text-xs">${op.uuid || '—'}</td>
+        <td class="px-4 py-3 text-right">
+          <button onclick="removeOp('${op.name}')" class="text-red-400 hover:text-red-300 font-bold text-xs bg-red-400/10 hover:bg-red-400/20 px-3 py-1.5 rounded-lg transition-colors border border-red-400/20">
+            Remove
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } catch (e) {
+    console.warn('Failed to load ops:', e.message);
+  }
+}
+
+async function addOp() {
+  const input = document.getElementById('op-username-input');
+  const username = input.value.trim();
+  if (!username) { showToast('Please enter a username', 'error'); return; }
+  if (currentStatus !== 'Running') { showToast('Server must be running to add an operator.', 'error'); return; }
+  
+  const btn = document.getElementById('add-op-btn');
+  btn.disabled = true;
+  try {
+    const res = await apiFetch('/api/server/ops', {
+      method: 'POST',
+      body: JSON.stringify({ username })
+    });
+    showToast(res.message, 'success');
+    input.value = '';
+    setTimeout(loadOps, 1000); // Wait for ops.json to update
+  } catch (e) {
+    showToast(e.message, 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function removeOp(username) {
+  if (currentStatus !== 'Running') { showToast('Server must be running to remove an operator.', 'error'); return; }
+  
+  try {
+    const res = await apiFetch(`/api/server/ops/${username}`, { method: 'DELETE' });
+    showToast(res.message, 'success');
+    setTimeout(loadOps, 1000); // Wait for ops.json to update
+  } catch (e) {
+    showToast(e.message, 'error');
   }
 }
 
